@@ -241,7 +241,8 @@ body.lang-zh .crosstip .ttinterp{font-size:12.5px}
 .sonderow button.on{color:var(--accent);border-color:var(--accent)}
 .sondeinfo{font-size:11.5px;color:var(--faint);line-height:1.4;min-height:1em}
 .sondeinfo.warn{color:var(--warn)}
-.mnote{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap}
+.mnote{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.modelrow{flex-wrap:wrap}
 .sheet select#mModel{width:100%;background:var(--bg2,#0f1526);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px;margin-bottom:4px;-webkit-appearance:none;appearance:none}
 .mtag{display:inline-block;margin-left:6px;padding:1px 7px;font-size:9.5px;font-weight:800;letter-spacing:.03em;color:var(--accent);border:1px solid var(--accent);border-radius:999px;vertical-align:2px;opacity:.85}
 .notebox>summary{color:var(--dim);font-weight:600}
@@ -506,8 +507,9 @@ function modelIsSurfaceOnly(){ const m=MODELS.find(x=>x.api===MODEL); return !!(
    Priority: user's saved choice for this farm > farm's baked-in `model` field > current global model.
    Switching the model while a farm is loaded saves it as that farm's default automatically. */
 let FARM_MODELS={}; try{ FARM_MODELS=JSON.parse(localStorage.getItem("skewt.farmModel.v1")||"{}")||{}; }catch(e){}
+try{ if(FARM_MODELS["@myloc"]!==undefined){ delete FARM_MODELS["@myloc"]; localStorage.setItem("skewt.farmModel.v1",JSON.stringify(FARM_MODELS)); } }catch(e){}
 function saveFarmModels(){ try{localStorage.setItem("skewt.farmModel.v1",JSON.stringify(FARM_MODELS));}catch(e){} }
-function farmModelKey(){ return ACTIVE_ID!=null?String(ACTIVE_ID):(LASTLABEL==="@myloc"?"@myloc":null); }
+function farmModelKey(){ return ACTIVE_ID!=null?String(ACTIVE_ID):null; }  // GPS location has NO sticky model — free choice every time
 function modelShortOf(api){ const m=MODELS.find(x=>x.api===api); return m?m.short:null; }
 function populateFarmModelSel(){
   const sel=document.getElementById("mModel"); if(!sel)return;
@@ -519,7 +521,7 @@ function updateModelNote(){
   const e=document.getElementById("modelNote"); if(!e)return;
   const key=farmModelKey();
   const bound=key!=null && (FARM_MODELS[key]===MODEL);
-  e.textContent = bound ? (key==="@myloc"?L("✓ 位置默认","✓ location default"):L("✓ 果园默认","✓ farm default")) : "";
+  e.textContent = bound ? L("✓ 果园默认","✓ farm default") : "";
 }
 function applyFarmModel(key,seedDefault){
   const want=(key!=null?FARM_MODELS[key]:null)||seedDefault||null;
@@ -654,8 +656,8 @@ function buildGuide(){
     `当空气接近饱和（温度与露点几乎相等）、风力轻、能见度下降时会标记<b>雾</b> — 最常见于黎明前后。低于1公里=真雾；1–4公里=轻雾/霾。<b>云量</b>分低/中/高三层，可区分灰蒙蒙的低云与稀薄卷云。<b>风</b>为风速与风的<b>来向</b>（“西南风”来自西南方）。`,
     `<b>Fog</b> is flagged when the air is nearly saturated (temperature and dew point almost equal), winds are light, and visibility drops — most likely around dawn. Under 1 km = true fog; 1–4 km = mist/haze. <b>Cloud cover</b> is split low/mid/high so you can tell a grey overcast base from thin cirrus. <b>Wind</b> is the speed and the direction it blows <b>from</b> (a "SW" wind comes out of the southwest).`)
   +D(L("选择天气模式","Choosing a weather model"),
-    `顶部的<b>模式</b>选择器可切换驱动探空的全球模式，因为不同模式在同一地点常给出不同结果 — 这正是交叉比对的价值。<br><br>• <b>IFS 0.25°（欧洲 ECMWF）</b> — 综合表现最佳的全球模式，含完整高空数据，<b>默认首选</b>。<br>• <b>IFS 9km</b> — ECMWF 最高分辨率的实时模式，驱动我们的 WeatherNext 设施；但公开数据<b>仅含地面</b>，故温湿曲线与降雨可用，风矢端图/风速廓线不可用。<br>• <b>AIFS（ECMWF · AI）</b> 与 <b>GraphCast（NOAA · AI）</b> — 新一代 AI 模式，含完整高空数据。<br>• <b>ICON / JMA / CMA / GEM / GFS</b> — 德国、日本、中国、加拿大、美国的业务模式。<br><br>提示：马来西亚等热带地区，<b>best_match 会锁定为 ECMWF</b>，所以手动选择模式才能真正比较。切换后应用会立即以新模式重新拉取。<br><br><b>每个果园可有自己的默认模式</b> — 这是 RainScore Lab 工作流的落地：打开<b>果园列表</b>，每一行右侧都有一个小小的<b>模式下拉框</b>，直接为该果园选定默认模式即可（例如 RainScore 显示某果园 GFS 最准，就在该行选 GFS）。此后点选该果园会自动采用该模式；选「模式—」则跟随当前全局模式。查看某果园时切换顶部模式选择器同样会自动记住。添加新果园时也可直接指定。`,
-    `The <b>Model</b> selector at the top switches which global model drives the sounding. Different models often disagree at the same spot — that disagreement is exactly what's worth comparing.<br><br>• <b>IFS 0.25° (ECMWF)</b> — the best all-round global model, with full upper-air data. This is the <b>default</b>.<br>• <b>IFS 9km</b> — ECMWF's highest-resolution real-time model and what powers our WeatherNext facility; but the open feed is <b>surface-only</b>, so temperature/dew curves and rain work while the hodograph and wind profile don't.<br>• <b>AIFS (ECMWF · AI)</b> and <b>GraphCast (NOAA · AI)</b> — the new generation of AI models, with full upper-air data.<br>• <b>ICON / JMA / CMA / GEM / GFS</b> — the operational models of Germany, Japan, China, Canada and the US.<br><br>Tip: in the tropics (like Malaysia) <b>best_match locks to ECMWF</b>, so picking a model manually is the only way to really compare. Switching reloads the sounding immediately.<br><br><b>Each farm can have its own default model</b> — this operationalizes the RainScore Lab workflow: open <b>Browse farms</b>, and every row has a small <b>model dropdown</b> on its right. Pick the model directly there (e.g. RainScore shows GFS is most accurate for an orchard → select GFS on that row). Tapping that farm then always loads with its model; "model —" means follow the current global model. Switching the top model selector while viewing a farm also saves it automatically, and new farms can be created with a default.`)
+    `顶部的<b>模式</b>选择器可切换驱动探空的全球模式，因为不同模式在同一地点常给出不同结果 — 这正是交叉比对的价值。<br><br>• <b>IFS 0.25°（欧洲 ECMWF）</b> — 综合表现最佳的全球模式，含完整高空数据，<b>默认首选</b>。<br>• <b>IFS 9km</b> — ECMWF 最高分辨率的实时模式，驱动我们的 WeatherNext 设施；但公开数据<b>仅含地面</b>，故温湿曲线与降雨可用，风矢端图/风速廓线不可用。<br>• <b>AIFS（ECMWF · AI）</b> 与 <b>GraphCast（NOAA · AI）</b> — 新一代 AI 模式，含完整高空数据。<br>• <b>ICON / JMA / CMA / GEM / GFS</b> — 德国、日本、中国、加拿大、美国的业务模式。<br><br>提示：马来西亚等热带地区，<b>best_match 会锁定为 ECMWF</b>，所以手动选择模式才能真正比较。切换后应用会立即以新模式重新拉取。<br><br><b>每个果园可有自己的默认模式</b> — 这是 RainScore Lab 工作流的落地：打开<b>果园列表</b>，每一行右侧都有一个小小的<b>模式下拉框</b>，直接为该果园选定默认模式即可（例如 RainScore 显示某果园 GFS 最准，就在该行选 GFS）。此后点选该果园会自动采用该模式；查看某果园时切换顶部模式选择器同样会自动记住。添加新果园时也可直接指定。<br><br><b>「自动」的含义：</b>设为「自动」的果园<b>不改变</b>模式 — 直接沿用顶部选择器当前所选。注意：若你刚看过一个有默认模式的果园（例如 GFS），选择器已被切到 GFS，此时打开「自动」果园会沿用 GFS 而不是回到 IFS。<br><br><b>「我的位置」（GPS）没有默认模式</b> — 每次都是自由选择，切换模式不会被记住，方便随时交叉比对。`,
+    `The <b>Model</b> selector at the top switches which global model drives the sounding. Different models often disagree at the same spot — that disagreement is exactly what's worth comparing.<br><br>• <b>IFS 0.25° (ECMWF)</b> — the best all-round global model, with full upper-air data. This is the <b>default</b>.<br>• <b>IFS 9km</b> — ECMWF's highest-resolution real-time model and what powers our WeatherNext facility; but the open feed is <b>surface-only</b>, so temperature/dew curves and rain work while the hodograph and wind profile don't.<br>• <b>AIFS (ECMWF · AI)</b> and <b>GraphCast (NOAA · AI)</b> — the new generation of AI models, with full upper-air data.<br>• <b>ICON / JMA / CMA / GEM / GFS</b> — the operational models of Germany, Japan, China, Canada and the US.<br><br>Tip: in the tropics (like Malaysia) <b>best_match locks to ECMWF</b>, so picking a model manually is the only way to really compare. Switching reloads the sounding immediately.<br><br><b>Each farm can have its own default model</b> — this operationalizes the RainScore Lab workflow: open <b>Browse farms</b>, and every row has a small <b>model dropdown</b> on its right. Pick the model directly there (e.g. RainScore shows GFS is most accurate for an orchard → select GFS on that row). Tapping that farm then always loads with its model. Switching the top model selector while viewing a farm also saves it automatically, and new farms can be created with a default.<br><br><b>What "Auto" means:</b> a farm set to <b>Auto</b> doesn't change the model — it simply follows whatever the top selector currently shows. Note: if you just viewed a farm with a default (say GFS), the selector is now on GFS, so opening an Auto farm continues in GFS rather than jumping back to IFS.<br><br><b>"My location" (GPS) has no default model</b> — every visit is a free choice, and switching models there is never remembered, so you can cross-compare freely.`)
   +D(L("小时风险条、分享与自动加载","The risk strip, sharing & auto-load"),
     `<b>24小时风险条</b>是小时格上方的彩色细条：暗色=平静，绿色=潮湿/毛毛雨，琥珀=可能有风暴，红色=要素齐备。它用与“会下雨/雷暴吗”面板相同的评分，让你一眼看出该担心哪个时段 — 点击任一格即可跳到该小时。<br><br><b>📤 分享</b>按钮把当前地点、时刻、结论、CAPE/CIN/可降水量与所用模式打包成简讯，一键发送到 WhatsApp。<br><br>应用会<b>记住上次查看的地点</b>并在下次打开时自动载入。`,
     `The <b>24-hour risk strip</b> is the thin coloured bar above the hour tiles: dim = quiet, green = moist/drizzle, amber = storms possible, red = ingredients in place. It uses the same scoring as the "Is a storm coming?" panel so you can see at a glance which hour to worry about — tap any segment to jump to that hour.<br><br>The <b>📤 share</b> button packages the location, hour, verdict, CAPE/CIN/PW and the model in use into a short message and opens WhatsApp.<br><br>The app <b>remembers the last location</b> you viewed and auto-loads it next time you open it.`)
@@ -719,6 +721,7 @@ function applyStaticLang(){
   populateModelSel();
   populateFarmModelSel();
   updateModelNote();
+  if(typeof renderList==="function") renderList();   // row dropdowns follow the language toggle
   const sb=document.getElementById("shareBtn"); if(sb)sb.title=L("分享到 WhatsApp","Share to WhatsApp");
   updateSondeUI();
 }
@@ -1672,7 +1675,7 @@ function renderList(){
 
   const card=f=>{
     const fm=FARM_MODELS[String(f.id)]||f.model||"";
-    const opts=`<option value=""${fm===""?" selected":""}>${L("模式—","model —")}</option>`+
+    const opts=`<option value=""${fm===""?" selected":""}>${L("自动","Auto")}</option>`+
       MODELS.map(m=>`<option value="${m.api}"${m.api===fm?" selected":""}>${m.short}</option>`).join("");
     return `<div class="frow${f.id===ACTIVE_ID?" active":""}" data-id="${f.id}"><div class="fn">${esc(f.name)}<small>${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}</small></div><select class="rowmodel" data-id="${f.id}" title="${L('该果园的默认天气模式','Default weather model for this farm')}">${opts}</select></div>`;
   };
@@ -1892,7 +1895,7 @@ document.getElementById("locBtn").onclick=()=>{
   st.textContent=L("正在请求定位权限…","Requesting location permission…");
   ACTIVE_ID=null; renderList();
   navigator.geolocation.getCurrentPosition(
-    pos=>{applyFarmModel("@myloc",null);load(pos.coords.latitude,pos.coords.longitude,"@myloc");},
+    pos=>load(pos.coords.latitude,pos.coords.longitude,"@myloc"),
     err=>{document.getElementById("err").textContent=L("定位被拒绝（","Location blocked (")+err.message+L("）。请开启定位权限，或从列表选择果园。","). Enable location access, or pick a farm from the list instead.");document.getElementById("err").classList.remove("hidden");st.textContent=L("定位被拒 — 您仍可从列表选择果园。","Location denied — you can still pick a farm.");},
     {enableHighAccuracy:true,timeout:12000,maximumAge:300000}
   );
@@ -2040,7 +2043,7 @@ try{
   if(last && isFinite(last.lat) && isFinite(last.lon)){
     if(last.activeId!=null && typeof ACTIVE_ID!=="undefined"){ ACTIVE_ID=last.activeId; renderList(); }
     const seedDef=(last.activeId!=null && typeof farmById==="function")?(farmById(last.activeId)||{}).model:null;
-    applyFarmModel(last.activeId!=null?String(last.activeId):(last.label==="@myloc"?"@myloc":null), seedDef);
+    if(last.activeId!=null) applyFarmModel(String(last.activeId), seedDef);
     load(last.lat,last.lon,last.label||null);
   }
 }catch(e){}
