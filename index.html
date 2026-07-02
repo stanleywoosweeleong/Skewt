@@ -161,6 +161,7 @@ button.compact{padding:9px 12px;font-size:15px;line-height:1}
 .crosstip .ttrow i:first-child{margin-left:0}
 .chart-hint{text-align:center;font-size:12px;color:var(--faint);margin-top:2px}
 @media(hover:hover){.chart-hint::before{content:"🖱 "}}
+.snap-btn{right:64px !important}
 .expand-btn{position:absolute;top:10px;right:14px;width:34px;height:34px;padding:0;font-size:16px;border-radius:9px;background:rgba(18,24,40,.9);color:var(--dim);z-index:6}
 /* ---------- desktop layout (wide screens) ---------- */
 @media (min-width: 900px){
@@ -230,6 +231,12 @@ svg{width:100%;height:auto;display:block;touch-action:manipulation}
 #hodowrap #wpTitle{margin-top:4px}
 #hodowrap .windslider-row{margin-top:2px}
 #hodowrap svg{max-width:340px;margin:0 auto;display:block}
+.parcelrow{display:flex;align-items:center;gap:10px;margin:2px 16px 6px;flex-wrap:wrap}
+.parcel-lbl{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{padding:7px 12px;font-size:12px;font-weight:700;background:transparent;border:none;border-right:1px solid var(--line);color:var(--dim);border-radius:0}
+.seg button:last-child{border-right:none}
+.seg button.on{color:var(--accent);background:rgba(255,122,60,.12)}
 .windslider-row{display:flex;flex-direction:column;gap:4px;padding:2px 6px 10px}
 .hodonote{font-size:13.5px;color:var(--dim);line-height:1.55;max-width:520px;margin:0;text-align:left;padding:0 14px 12px}
 .notebox{margin:6px 16px 4px}
@@ -302,6 +309,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
 </div>
 <div class="modelrow"><label id="modelLbl" for="modelSel">模式</label><select id="modelSel"></select><span class="mnote" id="modelNote"></span></div>
 <div class="sonderow"><button id="sondeBtn">🎈</button><span class="sondeinfo" id="sondeInfo"></span></div>
+<div class="modelrow cmprow"><label id="cmpLbl" for="cmpSel">对比</label><select id="cmpSel"></select></div>
 
 <div class="pickwrap" id="pickwrap">
   <button class="listhead" id="listHead"><span class="lh-caret" id="lhCaret">▸</span><span class="lh-title" id="lhTitle">果园列表</span><span class="lh-count" id="lhCount">114</span></button>
@@ -352,8 +360,15 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
 <div class="verdict hidden" id="verdict"></div>
 
 <div id="crossTip" class="crosstip crosstip-inline hidden"></div>
+<div class="parcelrow hidden" id="parcelRow">
+  <span class="parcel-lbl" id="parcelLbl"></span>
+  <div class="seg" id="parcelSeg">
+    <button data-parcel="sb"></button><button data-parcel="ml"></button><button data-parcel="mu"></button>
+  </div>
+</div>
 <div class="chartwrap hidden" id="chartwrap">
   <svg id="chart" viewBox="0 0 500 560" preserveAspectRatio="xMidYMid meet"></svg>
+  <button class="expand-btn snap-btn" id="snapBtn" title="Share chart image">📷</button>
   <button class="expand-btn" id="expandBtn" title="Enlarge">⤢</button>
 </div>
 
@@ -384,6 +399,11 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
 
 <div id="ingredients" class="hidden"></div>
 
+<div id="thwrap" class="hidden">
+  <div class="cardsect" id="thTitle"></div>
+  <svg id="thchart" viewBox="0 0 360 250" preserveAspectRatio="xMidYMid meet"></svg>
+  <div class="chart-hint" id="thHint"></div>
+</div>
 <div id="hodowrap" class="hidden">
   <div class="cardsect" id="hodoTitle"></div>
   <svg id="hodo" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet"></svg>
@@ -502,6 +522,20 @@ async function toggleSonde(){
   }
 }
 /* ================= end radiosonde overlay ================= */
+let COMPARE_MODEL=(function(){ try{const v=localStorage.getItem("skewt.cmp.v1"); return MODELS.some(m=>m.api===v)?v:""; }catch(e){ return ""; } })();
+let DATA2=null;
+function populateCmpSel(){
+  const sel=document.getElementById("cmpSel"); if(!sel)return;
+  sel.innerHTML=`<option value=""${COMPARE_MODEL===""?" selected":""}>${L("关闭对比","Compare off")}</option>`+
+    MODELS.map(m=>`<option value="${m.api}"${m.api===COMPARE_MODEL?" selected":""}>${m.short} · ${L(m.zh,m.en)}</option>`).join("");
+}
+async function refreshCompare(){
+  if(!COMPARE_MODEL||!LATLON){ DATA2=null; if(DATA)showHour(CUR_I); return; }
+  try{
+    DATA2=await getSounding(LATLON[0],LATLON[1],COMPARE_MODEL);
+    if(DATA)showHour(CUR_I);
+  }catch(e){ DATA2=null; if(DATA)showHour(CUR_I); }
+}
 function modelIsSurfaceOnly(){ const m=MODELS.find(x=>x.api===MODEL); return !!(m&&m.surfaceOnly); }
 /* ---- per-farm default model (populated from RainScore Lab findings) ----
    Priority: user's saved choice for this farm > farm's baked-in `model` field > current global model.
@@ -541,7 +575,9 @@ function populateModelSel(){
 /* ---- shared storm scoring: single source of truth for the ingredients panel,
        the 24-hour risk strip, and the WhatsApp share ---- */
 function stormScores(P,A){
-  const pw=A.pw, cape=A.cape, li=A.LI, ki=A.KI, cin=A.cin, convT=A.convT, Tnow=P.Tsfc, sh=A.shear;
+  const pw=A.pw, li=A.LI, ki=A.KI, convT=A.convT, Tnow=P.Tsfc, sh=A.shear;
+  const cape=(A.capeMU!=null?A.capeMU:A.cape);   // fuel: most-unstable parcel (sees elevated instability)
+  const cin =(A.cinSB!=null?A.cinSB:A.cin);      // cap: what a SURFACE parcel must break through
   const m = pw>=45?2: pw>=30?1:0;
   const i = (cape>=1000||li<=-4)?2: (cape>=300||li<=-1||ki>=30)?1:0;
   const capStrong = cin<=-50;
@@ -573,7 +609,12 @@ function rainWordOf(rain){
 function buildLegend(){
   const items=[["--temp",L("温度","Temperature"),""],["--dew",L("露点","Dew point"),""],
     ["--parcel",L("抬升气块","Lifted parcel"),"border-top:2px dashed"],["--dry",L("干绝热线","Dry adiabat"),""],
-    ["--moist",L("湿绝热线","Moist adiabat"),""],["--mix",L("混合比","Mixing ratio"),""],["--frz",L("冻结层 (0°C)","Freezing level (0°C)"),""]];
+    ["--moist",L("湿绝热线","Moist adiabat"),""],["--mix",L("混合比","Mixing ratio"),""],["--frz",L("冻结层 (0°C)","Freezing level (0°C)"),""],
+    [null,L("湿球温度","Wet-bulb"),"background:#59d6e6"],
+    [null,L("云层带（湿度条）","Cloud bar (humidity)"),"background:#9fc4ff;opacity:.6"]];
+  if(typeof COMPARE_MODEL!=="undefined"&&COMPARE_MODEL){
+    items.push([null,(modelShortOf(COMPARE_MODEL)||"")+" "+L("对比模式","compare model"),"background:#c084fc"]);
+  }
   if(typeof SONDE_ON!=="undefined"&&SONDE_ON){
     items.push([null,L("🎈实测温度","🎈Obs temperature"),"background:repeating-linear-gradient(90deg,#e9eef8 0 6px,transparent 6px 10px)"]);
     items.push([null,L("🎈实测露点","🎈Obs dew point"),"background:repeating-linear-gradient(90deg,#8fa6c8 0 3px,transparent 3px 7px)"]);
@@ -664,6 +705,9 @@ function buildGuide(){
   +D(L("实测探空叠加（气球观测）","Observed sounding overlay (radiosonde)"),
     `<b>探空气球（radiosonde）</b>是气象局每天施放的真实观测：气球携带传感器升空，逐层实测温度、湿度与风 — 它是大气廓线的“地面真相”。应用会<b>默认</b>把<b>最近站点的最新实测</b>以灰白虚线叠加到预报曲线上（点🎈可隐藏，选择会被记住）：两组曲线贴近说明模式可信；实测更湿、更暖或逆温位置不同，就是模式的偏差 — 这正是 RainScore Lab 思想应用到整个大气柱。<br><br>注意：马来西亚的施放站点有限（雪邦、槟城、哥打峇鲁及东马数站），距离果园可能上百公里，且每天仅00Z/12Z施放 — 界面会显示站点、施放时间与<b>数据年龄</b>；超过约13小时会提示已较旧。`,
     `A <b>radiosonde</b> is the real thing: a weather-service balloon carrying sensors that measure temperature, humidity and wind layer by layer as it rises — the ground truth for the atmospheric profile. The app overlays the <b>latest launch from the nearest station</b> as grey/white dashed curves on top of the forecast <b>by default</b> (tap 🎈 to hide — your choice is remembered): curves hugging each other means the model is trustworthy; the observation being moister, warmer, or placing an inversion elsewhere is the model's bias — RainScore Lab thinking applied to the whole column.<br><br>Note: Malaysia's launch network is sparse (Sepang, Penang, Kota Bharu and a few East Malaysia sites), possibly 100+ km from your orchard, launching only at 00Z/12Z — the app shows the station, launch time and <b>data age</b>, and warns past ~13 hours.`)
+  +D(L("气块选择、DCAPE 与新图层","Parcels, DCAPE & the new layers"),
+    `<b>抬升气块（SB/ML/MU）：</b>图上方的选择器决定沿虚线抬升的是哪种气块。<b>SB 地面</b>＝地面空气（午后经典）；<b>ML 混合层</b>＝最底层100 hPa的平均（更能代表整层受热）；<b>MU 最不稳定</b>＝低层300 hPa内θe最高的那层 — <b>清晨逆温压住地面时，燃料常藏在逆温之上</b>，此时SB CAPE很小而MU CAPE很大。「CAPE 三气块」卡片一眼对比三者；「会下雨吗」面板的燃料用MU判断、盖子用SB判断，因此清晨不再低估午后风险。<br><br><b>DCAPE 下沉能量：</b>雨水在中层干空气中蒸发降温，冷空气砸向地面形成<b>下击暴流</b> — 会扫落果实、折断枝条。DCAPE越大风越猛：&lt;400弱，400–800中等，800–1200强，&gt;1200极强。<br><br><b>新图层：</b>青色细线＝<b>湿球温度</b>；右侧蓝色竖条＝<b>湿度/云层带</b>（越蓝越接近饱和）；「对比」下拉可叠加<b>第二个模式</b>（紫色曲线）直接看分歧；<b>时间-高度湿度图</b>把24小时的水汽结构铺成一张图，点任一列即可跳到该小时；📷按钮把当前探空图<b>生成图片分享</b>到 WhatsApp。`,
+    `<b>Lifted parcels (SB/ML/MU):</b> the selector above the chart chooses which parcel rises along the dashed line. <b>SB Surface</b> = ground air (classic afternoon); <b>ML Mixed-layer</b> = average of the lowest 100 hPa (represents whole-layer heating); <b>MU Most-unstable</b> = the highest-θe level in the lowest 300 hPa — <b>on mornings when an inversion pins the surface, the fuel often hides above it</b>, so SB CAPE reads tiny while MU CAPE is large. The "CAPE 3 parcels" card compares all three at a glance; the storm panel judges fuel with MU and the cap with SB, so mornings no longer understate the afternoon threat.<br><br><b>DCAPE, downdraft energy:</b> rain evaporating into dry mid-level air chills it, and that cold air crashes to the ground as a <b>downburst</b> — the wind that strips fruit and snaps branches. Bigger DCAPE = harder crash: &lt;400 weak, 400–800 moderate, 800–1200 strong, &gt;1200 extreme.<br><br><b>New layers:</b> the thin cyan line is the <b>wet-bulb temperature</b>; the blue strip on the right edge is the <b>humidity/cloud bar</b> (bluer = closer to saturation); the <b>Compare</b> dropdown overlays a <b>second model</b> (violet curves) to see disagreement directly; the <b>time-height humidity panel</b> lays the whole day's moisture structure out in one picture — tap a column to jump to that hour; and the 📷 button renders the current sounding as an <b>image to share</b> on WhatsApp.`)
   +D(L("数据与计算精度","Data & computation accuracy"),
     `为保证可信，本应用的热力学全部在设备端按标准方法计算：饱和水汽压与LCL用 <b>Bolton (1980)</b> 公式；抬升气块沿守恒<b>相当位温 θe</b>（气块携带的总热量指标，含凝结潜热）的精确伪绝热线；CAPE/CIN 采用<b>虚温</b> — 含水汽的空气更轻，虚温就是把这一效应折算进温度。高度优先取<b>模式位势高度</b>（模式自算的各气压层海拔，减去地形高程得到离地高度 — 对金马仑等高原果园尤为重要），缺失时按温度廓线做流体静力学积分。数据缺失时显示“—”或明确提示，绝不静默编造 — 宁可大声失败，不给假数据。`,
     `For trust, all thermodynamics run on-device with standard methods: saturation vapour pressure and LCL from <b>Bolton (1980)</b>; the lifted parcel follows the exact pseudoadiabat conserving <b>equivalent potential temperature θe</b> (the total-heat tag a parcel carries, latent heat included); CAPE/CIN use <b>virtual temperature</b> — moist air is lighter, and Tv folds that into the temperature. Heights prefer the <b>model's geopotential heights</b> (its own altitude of each pressure level, minus terrain elevation for height above ground — important for highland farms like Cameron), falling back to hydrostatic integration of the temperature profile. Missing data shows "—" or an explicit notice, never a silent guess — loud failure over fake numbers.`)
@@ -717,6 +761,15 @@ function applyStaticLang(){
   T("binSd", L("恢复果园使其重新显示，或彻底清除。已清除的内置果园可在下方全部恢复。","Restore a farm to bring it back, or purge to remove it from your list. Purged farms in the built-in 114 can be brought back below."));
   T("restoreSeeds", L("↺ 恢复全部内置果园","↺ Restore all built-in farms"));
   T("modelLbl", L("模式","Model"));
+  T("parcelLbl", L("抬升气块","Parcel"));
+  T("cmpLbl", L("对比","Compare"));
+  T("thTitle", L("时间-高度湿度图 · 看整天的水汽结构","Time-height humidity · the day's moisture structure"));
+  T("thHint", L("每列＝一小时，越蓝＝越接近饱和（成云）。蓝色虚线＝0°C层。点击任一列跳到该小时。","Each column = one hour; bluer = closer to saturation (cloud). Dashed cyan = 0°C level. Tap a column to jump to that hour."));
+  populateCmpSel();
+  (function(){const seg=document.getElementById("parcelSeg"); if(seg){
+    const lbl={sb:L("地面 SB","Surface SB"),ml:L("混合层 ML","Mixed ML"),mu:L("最不稳定 MU","Most-unstable MU")};
+    seg.querySelectorAll("button").forEach(b=>b.textContent=lbl[b.dataset.parcel]);
+  } updateParcelSeg();})();
   T("lblModel2", L("默认天气模式（可选，来自 RainScore Lab 结论）","Default weather model (optional, from RainScore Lab findings)"));
   populateModelSel();
   populateFarmModelSel();
@@ -759,9 +812,18 @@ function thetaE(Tk,p){ // saturated theta-e at (Tk, p hPa)
   const th=Tk*Math.pow(1000/p, 0.2854*(1-0.28*rs));
   return th*Math.exp((3376/Tk-2.54)*rs*(1+0.81*rs));
 }
+function wetbulb(T,Td,p){ // iterative psychrometric wet-bulb (global: used by analyze & DCAPE)
+  let w=T; for(let i=0;i<50;i++){ const ew=esat(w); const e=esat(Td);
+    const diff=(0.00066*(1+0.00115*w)*p)*(T-w)-(ew-e); w+= diff*0.05; if(Math.abs(diff)<0.01)break; } return w; }
+function thetaEStart(T,Td,p){ // theta-e of an (un)saturated parcel from T/Td at p
+  const r=mixingRatioFromDew(Td,p)/1000;
+  const TL=lclTemp(C2K(T),C2K(Td));
+  const th=C2K(T)*Math.pow(1000/p, 0.2854*(1-0.28*r));
+  return th*Math.exp((3376/TL-2.54)*r*(1+0.81*r));
+}
 function moistLift(Tk,p0,p){
   const target=thetaE(Tk,p0);
-  let lo=120, hi=Tk+10;
+  let lo=120, hi=Tk+90;   // wide upper bound: moist DESCENT (downdrafts) warms strongly
   for(let i=0;i<60;i++){
     const mid=(lo+hi)/2;
     if(thetaE(mid,p)>target) hi=mid; else lo=mid;
@@ -789,11 +851,11 @@ function xOf(Tc,p){
 }
 
 /* ---------- fetch ---------- */
-async function getSounding(lat,lon){
+async function getSounding(lat,lon,modelOverride){
   const hv=LEVELS.map(p=>`temperature_${p}hPa,relative_humidity_${p}hPa,wind_speed_${p}hPa,wind_direction_${p}hPa,geopotential_height_${p}hPa`).join(",");
   const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
     `&hourly=${hv},temperature_2m,dew_point_2m,relative_humidity_2m,surface_pressure,precipitation,cape,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility,weather_code`+
-    `&forecast_days=2&timezone=auto&models=${MODEL}`;
+    `&forecast_days=2&timezone=auto&models=${modelOverride||MODEL}`;
   const r=await fetch(url);
   if(!r.ok) throw new Error("Weather service returned "+r.status);
   return r.json();
@@ -826,33 +888,28 @@ function buildProfile(d,i){
 }
 
 /* ---------- indices ---------- */
-function analyze(P){
-  const prof=P.prof, sfc=prof[0];
-  const Tk=C2K(sfc.T), Tdk=C2K(sfc.Td);
+/* ---- generalized parcel lift: works for surface, mixed-layer and elevated (MU) parcels ----
+   Returns the path aligned to prof levels (null below the parcel origin), plus
+   CAPE/CIN/LCL/LFC/EL computed with virtual temperature on both sides. */
+function liftFrom(Ts,Tds,ps,prof){
+  const Tk=C2K(Ts), Tdk=C2K(Tds);
   const Tlcl=lclTemp(Tk,Tdk);
-  // LCL pressure via dry adiabat inversion
-  let pl=sfc.p;
-  for(let pp=sfc.p; pp>150; pp-=1){ if(dryLift(Tk,sfc.p,pp)<=Tlcl){pl=pp;break;} }
-  const lclP=pl; let lclHt=null; // filled below via hypsometric heightAtP
-  // parcel path
-  const path=[]; let capePos=0, cin=0, elP=null, lfcP=null;
-  for(const lv of prof){
-    let Tp;
-    if(lv.p>=lclP) Tp=K2C(dryLift(Tk,sfc.p,lv.p));
-    else Tp=K2C(moistLift(Tlcl,lclP,lv.p));
-    path.push({p:lv.p,T:Tp});
-  }
-  // CAPE/CIN by trapezoid over layers, using VIRTUAL temperature on both sides:
-  // parcel conserves surface mixing ratio below the LCL and is saturated above it;
-  // the environment uses its own dew point. Tv = T(1+0.608 r).
-  const rSfc=mixingRatioFromDew(sfc.Td,sfc.p)/1000;
+  let pl=ps;
+  for(let pp=ps; pp>150; pp-=1){ if(dryLift(Tk,ps,pp)<=Tlcl){pl=pp;break;} }
+  const lclP=pl;
+  const rStart=mixingRatioFromDew(Tds,ps)/1000;
+  const path=prof.map(lv=>{
+    if(lv.p>ps+0.01) return {p:lv.p,T:null};        // below the parcel origin
+    const Tp = lv.p>=lclP ? K2C(dryLift(Tk,ps,lv.p)) : K2C(moistLift(Tlcl,lclP,lv.p));
+    return {p:lv.p,T:Tp};
+  });
   const tvEnv=(l)=>{ const r=(l.Td!=null?mixingRatioFromDew(l.Td,l.p):0)/1000; return C2K(l.T)*(1+0.608*r); };
-  const tvParcel=(Tp,p)=>{ const r=(p>=lclP?rSfc:mixingRatio(Tp,p)/1000); return C2K(Tp)*(1+0.608*r); };
+  const tvParcel=(Tp,p)=>{ const r=(p>=lclP?rStart:mixingRatio(Tp,p)/1000); return C2K(Tp)*(1+0.608*r); };
+  let capePos=0, cin=0, elP=null, lfcP=null;
   for(let k=0;k<prof.length-1;k++){
+    if(path[k].T==null||path[k+1].T==null) continue;
     const p1=prof[k].p,p2=prof[k+1].p;
-    const tve1=tvEnv(prof[k]), tve2=tvEnv(prof[k+1]);
-    const tvp1=tvParcel(path[k].T,p1), tvp2=tvParcel(path[k+1].T,p2);
-    const b1=(tvp1-tve1), b2=(tvp2-tve2);   // Kelvin difference: CAPE = Rd ∫ ΔTv d(ln p)
+    const b1=(tvParcel(path[k].T,p1)-tvEnv(prof[k])), b2=(tvParcel(path[k+1].T,p2)-tvEnv(prof[k+1]));
     const lp=Math.log(p1/p2);
     const contrib=Rd*(b1+b2)/2*lp;
     if(prof[k].p<=lclP){
@@ -863,8 +920,66 @@ function analyze(P){
     }
     if(contrib<0 && lfcP && !elP && prof[k].p<lclP) elP=prof[k].p;
   }
-  // parcel still buoyant at the top of the data -> storm top is above the chart, not absent
-  const elAbove = (!elP && !!lfcP);
+  const elAbove=(!elP && !!lfcP);
+  return {path,lclP,cape:capePos,cin,elP,lfcP,elAbove,Tlcl,startP:ps};
+}
+/* ---- DCAPE: downdraft energy. Origin = min theta-e level (800–500 hPa); the parcel
+   starts at the wet-bulb temperature there and descends saturated (theta-e conserving). */
+function computeDCAPE(prof){
+  let oi=-1, oe=1e9;
+  prof.forEach((l,i)=>{ if(l.p<=800&&l.p>=500&&l.Td!=null){ const e=thetaEStart(l.T,l.Td,l.p); if(e<oe){oe=e;oi=i;} } });
+  if(oi<0) return {dcape:null,originP:null};
+  const o=prof[oi];
+  const TwK=C2K(wetbulb(o.T,o.Td,o.p));
+  let d=0;
+  const tvEnv=(l)=>{ const r=(l.Td!=null?mixingRatioFromDew(l.Td,l.p):0)/1000; return C2K(l.T)*(1+0.608*r); };
+  for(let k=oi;k>0;k--){
+    const a=prof[k], b=prof[k-1];                    // downward: a (upper) -> b (lower)
+    const Ta=K2C(moistLift(TwK,o.p,a.p)), Tb=K2C(moistLift(TwK,o.p,b.p));
+    const tva=C2K(Ta)*(1+0.608*mixingRatio(Ta,a.p)/1000);
+    const tvb=C2K(Tb)*(1+0.608*mixingRatio(Tb,b.p)/1000);
+    d += Rd*((tvEnv(a)-tva)+(tvEnv(b)-tvb))/2*Math.log(b.p/a.p);
+  }
+  return {dcape:Math.max(0,Math.round(d)), originP:o.p};
+}
+function parcelLbl(){ return {sb:L("地面 SB","Surface SB"),ml:L("混合层 ML","Mixed ML"),mu:L("最不稳定 MU","Most-unstable MU")}[PARCEL_SEL]||"SB"; }
+function parcelTag(){ return {sb:"SB",ml:"ML",mu:"MU"}[PARCEL_SEL]||"SB"; }
+function dcapeWord(d){
+  if(d==null)return "—";
+  if(d<400)  return L("弱 — 下击暴流风险低","weak — low downburst risk");
+  if(d<800)  return L("中等 — 阵风可观","moderate — gusty outflow");
+  if(d<1200) return L("强 — 谨防下击暴流损果","strong — downburst may strip fruit");
+  return L("极强 — 严防落地强风","extreme — damaging downburst winds");
+}
+let PARCEL_SEL=(function(){ try{const v=localStorage.getItem("skewt.parcel.v1"); return ["sb","ml","mu"].includes(v)?v:"sb";}catch(e){return "sb";} })();
+function analyze(P){
+  const prof=P.prof, sfc=prof[0];
+  // --- the three standard parcels ---
+  // SB: surface values.  ML: mean theta & mixing ratio of the lowest 100 hPa.
+  // MU: the level with highest theta-e in the lowest 300 hPa (catches elevated fuel).
+  const pSB=liftFrom(sfc.T,sfc.Td,sfc.p,prof);
+  let thSum=0,rSum=0,nML=0;
+  for(const l of prof){ if(l.p>=sfc.p-100&&l.Td!=null){ thSum+=C2K(l.T)*Math.pow(1000/l.p,0.2854); rSum+=mixingRatioFromDew(l.Td,l.p); nML++; } }
+  let pML=pSB;
+  if(nML>=2){
+    const Tml=K2C((thSum/nML)*Math.pow(sfc.p/1000,0.2854));
+    const eML=(rSum/nML)*sfc.p/(622+(rSum/nML));
+    const TdMl=(function(){const ln=Math.log(eML/6.112);return 243.5*ln/(17.67-ln);})();
+    pML=liftFrom(Tml,Math.min(TdMl,Tml),sfc.p,prof);
+  }
+  let mi=0, me=-1e9;
+  prof.forEach((l,i)=>{ if(l.p>=sfc.p-300&&l.Td!=null){ const e=thetaEStart(l.T,l.Td,l.p); if(e>me){me=e;mi=i;} } });
+  const mL=prof[mi];
+  const pMU=(mi===0)?pSB:liftFrom(mL.T,mL.Td,mL.p,prof);
+  const PARCELS={sb:pSB,ml:pML,mu:pMU};
+  const SEL=PARCELS[PARCEL_SEL]||pSB;
+  const {dcape,originP:dcapeP}=computeDCAPE(prof);
+  // --- selected parcel drives the chart & primary cards (back-compat names) ---
+  const path=SEL.path, lclP=SEL.lclP, Tlcl=SEL.Tlcl;
+  let capePos=SEL.cape, cin=SEL.cin, elP=SEL.elP, lfcP=SEL.lfcP;
+  let lclHt=null;
+  const rSfc=mixingRatioFromDew(sfc.Td,sfc.p)/1000;
+  const elAbove = SEL.elAbove;
   // precipitable water (mm) = (1/g)∫ q dp
   let pw=0;
   for(let k=0;k<prof.length-1;k++){
@@ -873,10 +988,10 @@ function analyze(P){
     const dp=(prof[k].p-prof[k+1].p)*100;
     pw += (q1+q2)/2*dp/g;
   }
-  // lifted index: env - parcel at 500
+  // lifted index: env - SURFACE parcel at 500 (LI is SB by convention)
   let LI=null;
   const i500=prof.findIndex(l=>l.p<=500);
-  if(i500>0) LI=prof[i500].T - path[i500].T;
+  if(i500>0 && pSB.path[i500].T!=null) LI=prof[i500].T - pSB.path[i500].T;
 
   // ---- helpers for level interpolation ----
   const interpAtP=(targetP,key)=>{ // linear-in-logP interpolation of prof[key]
@@ -946,9 +1061,7 @@ function analyze(P){
   for(let k=0;k<prof.length-1;k++){ if(prof[k].T>=0&&prof[k+1].T<0){
     const f=(prof[k].T-0)/(prof[k].T-prof[k+1].T); frzP=prof[k].p+(prof[k+1].p-prof[k].p)*f; break; } }
   // wet-bulb zero: approximate wet-bulb per level, find 0 crossing
-  const wetbulb=(T,Td,p)=>{ // simple iterative psychrometric approx
-    let w=T; for(let i=0;i<50;i++){ const ew=esat(w); const e=esat(Td);
-      const diff=(0.00066*(1+0.00115*w)*p)*(T-w)-(ew-e); w+= diff*0.05; if(Math.abs(diff)<0.01)break; } return w; };
+  // (wetbulb is now a global function — shared with the DCAPE computation)
   let wbzP=null, prevWB=wetbulb(sfc.T,sfc.Td,sfc.p);
   for(let k=1;k<prof.length;k++){ const wb=wetbulb(prof[k].T,prof[k].Td,prof[k].p);
     if(prevWB>=0&&wb<0){ const f=prevWB/(prevWB-wb); wbzP=prof[k-1].p+(prof[k].p-prof[k-1].p)*f; break; } prevWB=wb; }
@@ -997,6 +1110,10 @@ function analyze(P){
   const dd=sfc.T-sfc.Td; // surface dewpoint depression
 
   return {path,lclP,lclHt,cape,cin,elP,lfcP,pw,LI,Tlcl:K2C(Tlcl),rhSfc,effEst,
+    parcels:PARCELS, parcelSel:PARCEL_SEL,
+    capeSB:Math.round(pSB.cape),capeML:Math.round(pML.cape),capeMU:Math.round(pMU.cape),
+    cinSB:Math.round(pSB.cin), muStartP:(mi===0?null:mL.p),
+    dcape, dcapeP,
     KI,TT,SI,frzP,frzHt:frzP?heightAtP(frzP):null,wbzP,wbzHt:wbzP?heightAtP(wbzP):null,
     elAbove,topHt:heightAtP(prof[prof.length-1].p),htOfP:heightAtP,
     lr700_500,lr850_500,elHt,lfcHt,shear,shearDir,srh,convT,ptype,dd,
@@ -1096,8 +1213,48 @@ function draw(P,A,svgEl){
   // environment temperature & dew point
   const Tpts=prof.map(l=>[xOf(l.T,l.p),yOf(l.p)]);
   const Dpts=prof.map(l=>[xOf(l.Td,l.p),yOf(l.p)]);
+  // wet-bulb curve: evaporative-cooling temperature, always between dew point and temperature
+  {
+    const Wpts=[];
+    for(const l of P.prof){
+      if(l.p>Pbot||l.p<Ptop||l.Td==null)continue;
+      Wpts.push([xOf(wetbulb(l.T,l.Td,l.p),l.p),yOf(l.p)]);
+    }
+    if(Wpts.length>1)g0.appendChild(poly(Wpts,"#59d6e6",1.4,"1 0"));
+  }
+  // cloud bar: narrow humidity strip along the right edge (denser = closer to saturation)
+  {
+    for(let k=0;k<P.prof.length-1;k++){
+      const a=P.prof[k],b=P.prof[k+1];
+      if(a.p>Pbot||b.p<Ptop||a.Td==null)continue;
+      const rh=(esat(a.Td)/esat(a.T))*100;
+      const al=Math.max(0,Math.min(1,(rh-60)/40));
+      if(al<=0.02)continue;
+      const y1=yOf(Math.min(a.p,Pbot)), y2=yOf(Math.max(b.p,Ptop));
+      const r=el("rect",{x:X1+2,y:Math.min(y1,y2),width:6,height:Math.abs(y2-y1),fill:"#9fc4ff",opacity:(0.15+0.55*al).toFixed(2)});
+      g0.appendChild(r);
+    }
+  }
   g0.appendChild(poly(Dpts,"var(--dew)",2.6));
   g0.appendChild(poly(Tpts,"var(--temp)",2.6));
+  // compare-model overlay: second model's T/Td in violet
+  if(COMPARE_MODEL&&DATA2&&DATA2.hourly){
+    try{
+      const P2=buildProfile(DATA2,CUR_I);
+      const t2=[],d2=[];
+      for(const l of P2.prof){
+        if(l.p>Pbot||l.p<Ptop)continue;
+        t2.push([xOf(l.T,l.p),yOf(l.p)]);
+        if(l.Td!=null)d2.push([xOf(l.Td,l.p),yOf(l.p)]);
+      }
+      if(d2.length>1)g0.appendChild(poly(d2,"#c084fc",1.5,"2 4"));
+      if(t2.length>1){
+        g0.appendChild(poly(t2,"#c084fc",1.7));
+        const mid=t2[Math.max(0,Math.floor(t2.length*0.55))];
+        g0.appendChild(txt(mid[0]+6,mid[1],modelShortOf(COMPARE_MODEL)||"",'gl-lbl',"start","#c084fc"));
+      }
+    }catch(e){}
+  }
   // radiosonde overlay: observed balloon profile in neutral greys over the forecast
   if(SONDE_ON&&SONDE&&SONDE.levels){
     const oT=[],oD=[];
@@ -1348,6 +1505,72 @@ function windBarb(g,x,y,spd,dir){
 }
 
 /* ---------- hodograph ---------- */
+let TH_GEO=null;
+function updateThCursor(i){
+  const m=document.getElementById("thCurMark");
+  if(m&&TH_GEO) m.setAttribute("x",(TH_GEO.x0+(i-HR_START)*TH_GEO.cw).toFixed(1));
+}
+function drawTimeHeight(){
+  const svg=document.getElementById("thchart"); if(!svg||!DATA)return;
+  svg.innerHTML="";
+  const h=DATA.hourly, X0t=42,X1t=352,Y0t=10,Y1t=218;
+  const lnTop=Math.log(150), lnBot=Math.log(1000);
+  const yOfP=p=>Y0t+(Math.log(p)-lnTop)/(lnBot-lnTop)*(Y1t-Y0t);
+  const n=HR_END-HR_START+1, cw=(X1t-X0t)/n;
+  const g=el("g",{}); svg.appendChild(g);
+  // pressure gridline labels
+  for(const p of [1000,850,700,500,300,200,150]){
+    const y=yOfP(p);
+    g.appendChild(line(X0t,y,X1t,y,"var(--line)",0.6));
+    g.appendChild(txt(X0t-4,y+3,String(p),'tick',"end","var(--faint)"));
+  }
+  // humidity cells
+  for(let i=HR_START;i<=HR_END;i++){
+    const x=X0t+(i-HR_START)*cw;
+    for(let k=0;k<LEVELS.length-1;k++){
+      const p1=LEVELS[k],p2=LEVELS[k+1];
+      const arr=h[`relative_humidity_${p1}hPa`];
+      const rh=arr?arr[i]:null;
+      if(rh==null)continue;
+      const al=Math.max(0,Math.min(1,(rh-45)/55));
+      if(al<=0.03)continue;
+      const y1=yOfP(p1),y2=yOfP(p2);
+      g.appendChild(el("rect",{x:x.toFixed(1),y:Math.min(y1,y2).toFixed(1),width:(cw+0.4).toFixed(1),height:Math.abs(y2-y1).toFixed(1),fill:"#7fb4ff",opacity:(0.08+0.62*al).toFixed(2)}));
+    }
+  }
+  // freezing level line across the day
+  const fz=[];
+  for(let i=HR_START;i<=HR_END;i++){
+    let fp=null;
+    for(let k=0;k<LEVELS.length-1;k++){
+      const a=h[`temperature_${LEVELS[k]}hPa`], b=h[`temperature_${LEVELS[k+1]}hPa`];
+      if(!a||!b||a[i]==null||b[i]==null)continue;
+      if(a[i]>=0&&b[i]<0){ const f=a[i]/(a[i]-b[i]); fp=LEVELS[k]+(LEVELS[k+1]-LEVELS[k])*f; break; }
+    }
+    if(fp)fz.push([X0t+(i-HR_START+0.5)*cw,yOfP(fp)]);
+  }
+  if(fz.length>1)g.appendChild(poly(fz,"var(--frz)",1.2,"4 3"));
+  // hour ticks + current marker
+  for(let i=HR_START;i<=HR_END;i++){
+    if((i-HR_START)%6===0){
+      const x=X0t+(i-HR_START)*cw;
+      g.appendChild(txt(x+cw/2,Y1t+14,fmtHour(h.time[i]),'tick',"middle","var(--faint)"));
+    }
+  }
+  const cx=X0t+(CUR_I-HR_START)*cw;
+  TH_GEO={x0:X0t,cw};
+  g.appendChild(el("rect",{id:"thCurMark",x:cx.toFixed(1),y:Y0t,width:cw.toFixed(1),height:(Y1t-Y0t).toFixed(1),fill:"none",stroke:"var(--accent)","stroke-width":1.6,rx:2}));
+  // tap a column to jump to that hour
+  const hit=el("rect",{x:X0t,y:Y0t,width:(X1t-X0t),height:(Y1t-Y0t),fill:"transparent"});
+  hit.style.cursor="pointer";
+  hit.addEventListener("click",ev=>{
+    const r=svg.getBoundingClientRect();
+    const fx=(ev.clientX-r.left)/r.width*360;
+    const i=HR_START+Math.max(0,Math.min(n-1,Math.floor((fx-X0t)/cw)));
+    showHour(i);
+  });
+  g.appendChild(hit);
+}
 function drawHodograph(A){
   const svg=document.getElementById("hodo"); if(!svg)return;
   svg.innerHTML="";
@@ -1552,8 +1775,10 @@ function render(P,A,fc){
       [L("降水类型","Precip type"),ptypeWord(A,P),"",L("依冷暖层判断落下的是什么。热带几乎总是雨。","What falls given the warm/cold layers. Tropics = almost always rain.")],
     ]],
     [L("不稳定度与风暴燃料","Instability & storm fuel"),[
-      ["CAPE",fmt(A.cape,0),"J/kg",L("浮力能量 — 红色阴影面积。最重要的风暴燃料指标。","Buoyant energy — the shaded red area. The single best storm-fuel gauge.")],
-      ["CIN",fmt(A.cin,0),"J/kg",L("“盖子”的强度。负值越大，越需先破盖。","The 'cap' resisting storms. Strongly negative = lid must break first.")],
+      [`CAPE (${parcelTag()})`,fmt(A.cape,0),"J/kg",L("浮力能量 — 红色阴影面积。最重要的风暴燃料指标。","Buoyant energy — the shaded red area. The single best storm-fuel gauge.")],
+      [L("CAPE 三气块","CAPE 3 parcels"),`${fmt(A.capeSB,0)} / ${fmt(A.capeML,0)} / ${fmt(A.capeMU,0)}`,"J/kg",L(`SB / ML / MU 三种气块对比。MU 远大于 SB＝逆温上方藏有燃料（清晨常见）${A.muStartP?` — MU 起点 ${Math.round(A.muStartP)} hPa`:""}。`,`Surface / Mixed-layer / Most-unstable compared. MU ≫ SB = fuel hiding above an inversion (common mornings)${A.muStartP?` — MU starts at ${Math.round(A.muStartP)} hPa`:""}.`)],
+      [`CIN (${parcelTag()})`,fmt(A.cin,0),"J/kg",L("“盖子”的强度。负值越大，越需先破盖。","The 'cap' resisting storms. Strongly negative = lid must break first.")],
+      ["DCAPE",fmt(A.dcape,0),"J/kg",L(`下沉气流能量 — 雨水蒸发冷却后砸向地面的力度。${dcapeWord(A.dcape)}${A.dcapeP?`（起点 ${Math.round(A.dcapeP)} hPa）`:""}。`,`Downdraft energy — how hard rain-cooled air can crash down. ${dcapeWord(A.dcape)}${A.dcapeP?` (from ${Math.round(A.dcapeP)} hPa)`:""}.`)],
       [L("抬升指数 LI","Lifted Index"),fmt(A.LI,1),"°C",L(`500 hPa处气块与环境之差。${liWord(A.LI)}（负值=不稳定）。`,`Parcel vs environment at 500 hPa. ${liWord(A.LI)} (negative = unstable).`)],
       [L("K指数","K-Index"),fmt(A.KI,0),"",L(`水汽+中层递减率。${kiWord(A.KI)}。`,`Moisture + mid-level lapse. ${kiWord(A.KI)}.`)],
       [L("总指数 TT","Total Totals"),fmt(A.TT,0),"",L(`经典雷暴指数。${ttWord(A.TT)}。`,`Classic thunderstorm index. ${ttWord(A.TT)}.`)],
@@ -1851,7 +2076,9 @@ function showHour(i){
   const sl=document.getElementById("fsSlider"); if(sl&&+sl.value!==i) sl.value=i;
   const lb=document.getElementById("fsSliderLabel"); if(lb) lb.innerHTML=labHtml;
   const wsl=document.getElementById("windSlider"); if(wsl&&+wsl.value!==i) wsl.value=i;
+  drawTimeHeight();
   const wlb=document.getElementById("windSliderLabel"); if(wlb) wlb.innerHTML=labHtml;
+  updateThCursor(i);   // time-height panel cursor follows the hour
 }
 let LAST_P=null, LAST_A=null;
 function openFullscreen(){
@@ -1871,7 +2098,7 @@ async function load(lat,lon,label){
     DATA=await getSounding(lat,lon); LATLON=[lat,lon]; LASTLABEL=label||null;
     SONDE=null; SONDE_ON=false; updateSondeUI();   // sonde overlay is per-location: reset on change
     renderLocCaption();
-    ["loc","hours","hoursLabel","riskstrip","verdict","crossTip","chartwrap","legendWrap","cards","ingredients","hodowrap","explain"].forEach(id=>document.getElementById(id).classList.remove("hidden"));
+    ["loc","hours","hoursLabel","riskstrip","verdict","crossTip","parcelRow","chartwrap","legendWrap","cards","ingredients","hodowrap","thwrap","explain"].forEach(id=>document.getElementById(id).classList.remove("hidden"));
     document.getElementById("err").classList.add("hidden");
     document.getElementById("reloadBtn").classList.remove("hidden");
     document.getElementById("shareBtn").classList.remove("hidden");
@@ -1879,6 +2106,7 @@ async function load(lat,lon,label){
     st.textContent="";
     buildHourStrip();
     if(SONDE_WORKER && sondePrefOn()) toggleSonde();   // observed sounding overlays by default (user's hide choice is remembered)
+    if(COMPARE_MODEL) refreshCompare();                // second-model overlay follows the location
     // bring the chart into view consistently: only if the user is scrolled down,
     // and jump instantly rather than a long smooth animation that feels like a lurch.
     requestAnimationFrame(()=>{ if(window.scrollY>4) window.scrollTo({top:0,behavior:"auto"}); });
@@ -1927,6 +2155,22 @@ function closeGuide(){document.getElementById("guideOverlay").classList.add("hid
 document.getElementById("infoBtn").onclick=openGuide;
 document.getElementById("langBtn").onclick=toggleLang;
 document.getElementById("sondeBtn").onclick=toggleSonde;
+document.getElementById("cmpSel").onchange=e=>{
+  COMPARE_MODEL=e.target.value;
+  try{localStorage.setItem("skewt.cmp.v1",COMPARE_MODEL);}catch(err){}
+  refreshCompare();
+};
+function updateParcelSeg(){
+  document.querySelectorAll("#parcelSeg button").forEach(b=>{
+    b.classList.toggle("on", b.dataset.parcel===PARCEL_SEL);
+  });
+}
+document.querySelectorAll("#parcelSeg button").forEach(b=>b.onclick=()=>{
+  PARCEL_SEL=b.dataset.parcel;
+  try{localStorage.setItem("skewt.parcel.v1",PARCEL_SEL);}catch(e){}
+  updateParcelSeg();
+  if(DATA)showHour(CUR_I);
+});
 (function(){ const d=document.querySelector('details[data-acc="hodo-note"]');
   if(d){ if(accOpen("hodo-note",false)) d.setAttribute("open",""); d.ontoggle=()=>{ACC["hodo-note"]=d.open?1:0;accSave();}; } })();
 document.getElementById("modelSel").onchange=e=>{
@@ -2011,6 +2255,71 @@ function sizeFs(){
 }
 window.addEventListener("resize",sizeFs);
 window.addEventListener("orientationchange",()=>setTimeout(sizeFs,120));
+/* ---- chart snapshot: render the SVG to a PNG with a caption footer, then share ---- */
+let SNAP_BLOB=null, SNAP_KEY="";
+function snapKey(){ return (LASTLABEL||"")+"|"+CUR_I+"|"+MODEL+"|"+PARCEL_SEL+"|"+(SONDE_ON?1:0)+"|"+COMPARE_MODEL; }
+function inlineStyles(srcRoot,dstRoot){
+  const srcAll=srcRoot.querySelectorAll("*"), dstAll=dstRoot.querySelectorAll("*");
+  const props=["fill","stroke","stroke-width","stroke-dasharray","opacity","font-size","font-family","font-weight","letter-spacing"];
+  for(let i=0;i<srcAll.length;i++){
+    const cs=getComputedStyle(srcAll[i]); let st="";
+    for(const pr of props){ const v=cs.getPropertyValue(pr); if(v&&v!=="none"||pr==="fill"||pr==="stroke") st+=pr+":"+v+";"; }
+    dstAll[i].setAttribute("style",st);
+  }
+}
+function buildSnapshot(cb){
+  const svg=document.getElementById("chart"); if(!svg||!DATA){cb(null);return;}
+  const clone=svg.cloneNode(true);
+  inlineStyles(svg,clone);
+  clone.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  const vb=svg.viewBox.baseVal, SC=2.2, W=Math.round(vb.width*SC), H=Math.round(vb.height*SC), FOOT=Math.round(56*SC/2.2);
+  const ser=new XMLSerializer().serializeToString(clone);
+  const img=new Image();
+  img.onload=()=>{
+    const cv=document.createElement("canvas"); cv.width=W; cv.height=H+FOOT;
+    const cx=cv.getContext("2d");
+    cx.fillStyle=getComputedStyle(document.body).backgroundColor||"#0a0e1a";
+    cx.fillRect(0,0,cv.width,cv.height);
+    cx.drawImage(img,0,0,W,H);
+    // caption footer
+    const label=(LASTLABEL==="@myloc")?L("当前位置","Current location"):(LASTLABEL||"");
+    const t=DATA.hourly.time[CUR_I];
+    cx.fillStyle="#e8ecf5"; cx.font=`700 ${Math.round(15*SC/1.6)}px -apple-system,system-ui,sans-serif`;
+    cx.fillText(`${label} · ${fmtFull(t)} · ${modelShort()} (${parcelTag()})`, 18, H+FOOT*0.42);
+    cx.fillStyle="#8b93a7"; cx.font=`600 ${Math.round(11*SC/1.6)}px -apple-system,system-ui,sans-serif`;
+    cx.fillText("SkewT Sounding · stanleywoosweeleong.github.io/SkewT", 18, H+FOOT*0.78);
+    cv.toBlob(b=>cb(b),"image/png");
+  };
+  img.onerror=()=>cb(null);
+  img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(ser);
+}
+async function shareSnapshot(blob){
+  const file=new File([blob],"skewt-sounding.png",{type:"image/png"});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file]}); return true; }
+    catch(e){ if(e&&e.name==="AbortError")return true; return false; }
+  }
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download="skewt-sounding.png"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  return true;
+}
+document.getElementById("snapBtn").onclick=()=>{
+  const b=document.getElementById("snapBtn");
+  if(SNAP_BLOB&&SNAP_KEY===snapKey()){          // second tap (iOS gesture rule): share the cached image
+    shareSnapshot(SNAP_BLOB).then(ok=>{ if(ok){b.textContent="📷";} });
+    return;
+  }
+  b.textContent="⏳";
+  buildSnapshot(blob=>{
+    if(!blob){ b.textContent="📷"; alert(L("图片生成失败。","Could not build the image.")); return; }
+    SNAP_BLOB=blob; SNAP_KEY=snapKey();
+    shareSnapshot(blob).then(ok=>{
+      if(ok){ b.textContent="📷"; }
+      else { b.textContent="📤"; b.title=L("再点一次发送图片","Tap again to send the image"); }
+    });
+  });
+};
 document.getElementById("expandBtn").onclick=()=>{openFullscreen();requestAnimationFrame(sizeFs);};
 document.getElementById("fsClose").onclick=closeFullscreen;
 document.getElementById("fsSlider").oninput=(e)=>showHour(+e.target.value);
