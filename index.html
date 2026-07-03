@@ -254,6 +254,7 @@ svg{width:100%;height:auto;display:block;touch-action:manipulation}
 .ens-tiers{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
 .ens-tiers span{font-size:11.5px;font-weight:700;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
 .ens-tiers span b{color:var(--ink)}
+.buildtag{text-align:center;font-size:10.5px;color:var(--faint);opacity:.7;padding:14px 0 4px;letter-spacing:.05em}
 .fsum{margin:10px 16px;border:1px solid rgba(61,214,140,.4);border-radius:14px;padding:12px 14px;background:rgba(61,214,140,.06)}
 .fsum .fs-h{font-size:12px;font-weight:800;letter-spacing:.06em;color:#3dd68c;margin-bottom:6px}
 .fsum .fs-line{font-size:14px;color:var(--ink);line-height:1.55;font-weight:600}
@@ -466,6 +467,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
 </div>
 
 <div id="explain" class="hidden"></div>
+<div class="buildtag" id="buildTag"></div>
 
 <div class="guide-overlay hidden" id="guideOverlay">
   <div class="guide-sheet">
@@ -510,6 +512,7 @@ const MODELS=[
 /* ================= radiosonde overlay (observed balloon vs forecast) =================
    SONDE_WORKER: paste your deployed Cloudflare Worker URL here (see sonde-worker.js).
    Leave empty to disable — the button will show a setup hint instead of failing silently. */
+const APP_BUILD="v49";   // bump together with sw.js CACHE_VERSION on every deploy
 const SONDE_WORKER="https://sonde-worker.standphoto.workers.dev";
 const SONDE_STATIONS=[
   {id:"48601",name:"Penang 槟城",lat:5.30,lon:100.27},
@@ -2442,6 +2445,7 @@ function closeGuide(){document.getElementById("guideOverlay").classList.add("hid
 document.getElementById("infoBtn").onclick=openGuide;
 document.getElementById("langBtn").onclick=toggleLang;
 document.getElementById("sondeBtn").onclick=toggleSonde;
+(function(){const b=document.getElementById("buildTag"); if(b)b.textContent="SkewT Sounding · build "+APP_BUILD;})();
 document.getElementById("cmpSel").onchange=e=>{
   COMPARE_MODEL=e.target.value;
   try{localStorage.setItem("skewt.cmp.v1",COMPARE_MODEL);}catch(err){}
