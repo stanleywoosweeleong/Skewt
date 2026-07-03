@@ -188,6 +188,18 @@ button.compact{padding:9px 12px;font-size:15px;line-height:1}
 .fs-cmpsel{display:block;margin:0 auto 8px;max-width:300px;width:92%;padding:7px 10px;font-size:12.5px;font-weight:700;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;text-align:center;text-align-last:center;-webkit-appearance:none;appearance:none}
 .fs-slabel{text-align:center;font-size:13px;color:var(--dim);margin-bottom:8px}
 .fs-slabel b{color:var(--ink);font-weight:800}
+/* mobile enlarged view: the chart takes the FULL screen width (max possible for its
+   aspect), the readout floats translucently over it, controls compress below. */
+@media (max-width: 999px){
+  .chartfs{overflow-y:auto}
+  .chartfs-body{flex:0 0 auto;display:block;padding:0;position:relative}
+  .chartfs-body svg{width:100%;height:auto;max-width:none}
+  #crossTipBig{position:absolute;top:6px;left:50%;transform:translateX(-50%);width:auto;max-width:92%;margin:0;z-index:6;pointer-events:none;background:rgba(18,24,40,.86);backdrop-filter:blur(3px);font-size:11.5px;padding:7px 11px;min-height:0}
+  .fs-parcelwrap{display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
+  .fs-cmpsel{display:inline-block;margin:0;width:auto;max-width:46%;flex:0 1 auto;padding:6px 8px;font-size:11.5px}
+  .fs-timebar{padding-top:8px}
+  .fs-slabel{margin-bottom:6px}
+}
 /* desktop enlarged view: chart fills the height on the left, readout + slider dock right.
    Placed after the base rules so it reliably overrides display:flex. */
 @media (min-width: 1000px){
@@ -205,6 +217,7 @@ button.compact{padding:9px 12px;font-size:15px;line-height:1}
     grid-column:2; grid-row:2;
     align-self:start; margin:0 16px 0 0;
     max-width:100%;
+    position:static;transform:none;left:auto;top:auto;pointer-events:auto;
   }
   .fs-timebar{
     grid-column:2; grid-row:2;
@@ -220,6 +233,7 @@ svg{width:100%;height:auto;display:block;touch-action:manipulation}
    outside the box (stray labels/barbs), so the chart height never shifts while scrubbing. */
 #thwrap svg{aspect-ratio:360/250;height:auto}
 #chart{aspect-ratio:540/560;height:auto;overflow:hidden}
+#chartBig{aspect-ratio:540/560;height:auto}
 .chartwrap{contain:layout}
 #chart,#chartBig{-webkit-user-select:none;user-select:none;-webkit-user-drag:none;-webkit-touch-callout:none}
 #chart *,#chartBig *{-webkit-user-drag:none;user-drag:none}
@@ -528,7 +542,7 @@ const MODELS=[
 /* ================= radiosonde overlay (observed balloon vs forecast) =================
    SONDE_WORKER: paste your deployed Cloudflare Worker URL here (see sonde-worker.js).
    Leave empty to disable — the button will show a setup hint instead of failing silently. */
-const APP_BUILD="v57";   // bump together with sw.js CACHE_VERSION on every deploy
+const APP_BUILD="v59";   // bump together with sw.js CACHE_VERSION on every deploy
 const SONDE_WORKER="https://sonde-worker.standphoto.workers.dev";
 const SONDE_STATIONS=[
   {id:"48601",name:"Penang 槟城",lat:5.30,lon:100.27},
@@ -1183,9 +1197,9 @@ function updateEnsHour(i){
 }
 /* ---- farmer's bottom line: one plain-language conclusion after all the instruments ---- */
 let RISK_LEVELS={}, A_NOW=null;
-function renderFarmerSummary(){
+function farmerSummaryParts(){
   const A0=(A_NOW||LAST_A);
-  const el=document.getElementById("fsum"); if(!el||!DATA||!A0)return;
+  if(!DATA||!A0)return null;
   const h=DATA.hourly;
   // worst risk ahead + when it starts (from the visible day)
   let worst=0, firstHi=null;
@@ -1202,6 +1216,8 @@ function renderFarmerSummary(){
     const wet=(st&&st.t1>=40) || (RISK_LEVELS[i]??0)>=2;
     if(wet){ firstRainI=i; break; }
   }
+  let riskFrom=null,riskTo=null;
+  for(let i=HR_START;i<=HR_END;i++){ if((RISK_LEVELS[i]??0)>=2){ if(riskFrom===null)riskFrom=i; riskTo=i; } }
   const cls=classifyParcels(A0);
   // sentence 1: what kind of day + when
   const what={
@@ -1240,8 +1256,8 @@ function renderFarmerSummary(){
     windowLine=L(`🌂 大约 ${at(firstRainI)} 前干爽 — 要喷药/叶面肥就趁早、赶在雨前喷完晾干。`,
                  `🌂 Dry until about ${at(firstRainI)} — if spraying, do it early and let it dry before the rain.`);
   } else if(firstRainI!=null){
-    windowLine=L(`🌂 雨可能一早（约 ${at(firstRainI)}）就来 — 喷药窗口很窄，务必看准短暂的干爽时段。`,
-                 `🌂 Rain may come early (around ${at(firstRainI)}) — the spray window is narrow; watch for a brief dry break.`);
+    windowLine=L(`🌂 雨可能很快（约 ${at(firstRainI)}）就到 — 喷药窗口很窄，务必看准短暂的干爽时段。`,
+                 `🌂 Rain may arrive soon (around ${at(firstRainI)}) — the spray window is narrow; watch for a brief dry break.`);
   }
   // three work lights
   // --- work lights mapped to how durian farmers actually decide ---
@@ -1270,14 +1286,20 @@ function renderFarmerSummary(){
                  : "off";                                        // too dry to bother / no benefit
   // MOVEMENT job: harvest & transport — caution on wet, stormy, or downburst days
   const markSeed=(c)=>c==="ok"?"✓":c==="warn"?"⚠":"·";
-  const ops=[
+  const lights=[
     [spray, mark(spray),  L("喷药/叶面肥","Spray / foliar")],
     [sundry,mark(sundry), L("晾晒","Sun-drying")],
     [seedFert==="off"?"":seedFert, markSeed(seedFert), L("播种/施肥","Seed / fertilize")],
-  ].map(([c,m,t])=>`<div class="op ${c}"><b>${m}</b>${t}</div>`).join("");
+  ];
+  return {what,ensLine,windowLine,lights,riskFrom,riskTo,at};
+}
+function renderFarmerSummary(){
+  const el=document.getElementById("fsum"); if(!el)return;
+  const P=farmerSummaryParts(); if(!P)return;
+  const ops=P.lights.map(([c,m,t])=>`<div class="op ${c}"><b>${m}</b>${t}</div>`).join("");
   el.innerHTML=`<div class="fs-h">${L("农户小结 · 看这里就够","FARMER'S BOTTOM LINE")}</div>
-    <div class="fs-line">${what}${ensLine?` ${ensLine}`:""}</div>
-    ${windowLine?`<div class="fs-line fs-window">${windowLine}</div>`:""}
+    <div class="fs-line">${P.what}${P.ensLine?` ${P.ensLine}`:""}</div>
+    ${P.windowLine?`<div class="fs-line fs-window">${P.windowLine}</div>`:""}
     <div class="fs-ops">${ops}</div>`;
 }
 /* ---- parcel-pattern matrix: classify the SB/ML/MU disagreement into an operational scenario ---- */
@@ -2625,6 +2647,20 @@ document.getElementById("shareBtn").onclick=()=>{
   // plain text only: emoji render as � on some receiving devices (WhatsApp Web/Windows),
   // and broadcasts get forwarded everywhere — reliability beats decoration
   const vPlain=v.replace(/^[^\p{L}\p{N}*]+/u,"");   // strip any leading emoji from the verdict
+  // farmer's bottom line + risk window: the parts a village broadcast actually needs
+  const FS=(typeof farmerSummaryParts==="function")?farmerSummaryParts():null;
+  const strip=(t)=>String(t||"").replace(/^[^\p{L}\p{N}*]+/u,"").trim();
+  const riskLine = FS ? (FS.riskFrom!=null
+      ? L(`雷暴风险时段：约 ${FS.at(FS.riskFrom)}–${FS.at(FS.riskTo)}`,`Storm-risk window: ~${FS.at(FS.riskFrom)}–${FS.at(FS.riskTo)}`)
+      : L(`今日无明显风暴时段`,`No clear storm window today`)) : null;
+  const lightsLine = FS&&FS.lights ? FS.lights.map(([c,m,t])=>`${m} ${t}`).join(" · ") : null;
+  const fsBlock = FS ? [
+      L(`【农户小结】`,`*FARMER'S BOTTOM LINE*`),
+      strip(FS.what)+(FS.ensLine?` ${String(FS.ensLine).trim()}`:""),
+      ...(FS.windowLine?[strip(FS.windowLine)]:[]),
+      ...(riskLine?[riskLine]:[]),
+      ...(lightsLine?[lightsLine]:[]),
+      ``] : [];
   const lines=L(
     [`*SkewT 探空*`,
      `${label}`,
@@ -2632,10 +2668,10 @@ document.getElementById("shareBtn").onclick=()=>{
      ``,
      `*${vPlain}*`,
      ``,
+     ...fsBlock,
      `降雨：${rainWordOf(rain)} · ${rain.toFixed(1)} mm/h`,
      ...(typeof ENS!=="undefined"&&ENS&&ENS.stats&&ENS.stats[CUR_I]?[`集合：中位 ${ENS.stats[CUR_I].p50.toFixed(1)} mm · ≥5mm ${ENS.stats[CUR_I].t5}% · ${ensConfWord()}`]:[]),
-     `CAPE ${num(A.cape)} J/kg · CIN ${num(A.cin)} J/kg`,
-     `可降水量 ${num(A.pw)} mm`,
+     `CAPE ${num(A.cape)} J/kg · CIN ${num(A.cin)} J/kg · 可降水量 ${num(A.pw)} mm`,
      `${shearTxt} · 云量 ${num(P.cloud)}%`,
      ``,
      `模式：${modelShort()} · Open-Meteo`],
@@ -2645,10 +2681,10 @@ document.getElementById("shareBtn").onclick=()=>{
      ``,
      `*${vPlain}*`,
      ``,
+     ...fsBlock,
      `Rain: ${rainWordOf(rain)} · ${rain.toFixed(1)} mm/h`,
      ...(typeof ENS!=="undefined"&&ENS&&ENS.stats&&ENS.stats[CUR_I]?[`Ensemble: median ${ENS.stats[CUR_I].p50.toFixed(1)} mm · ≥5mm ${ENS.stats[CUR_I].t5}% · ${ensConfWord()}`]:[]),
-     `CAPE ${num(A.cape)} J/kg · CIN ${num(A.cin)} J/kg`,
-     `PW ${num(A.pw)} mm`,
+     `CAPE ${num(A.cape)} J/kg · CIN ${num(A.cin)} J/kg · PW ${num(A.pw)} mm`,
      `${shearTxt} · cloud ${num(P.cloud)}%`,
      ``,
      `Model: ${modelShort()} · Open-Meteo`]).join("\n");
@@ -2672,17 +2708,12 @@ document.getElementById("legendHead").onclick=()=>{
 };
 applyLegendState();
 function sizeFs(){
-  const fs=document.getElementById("chartFs");
-  if(!fs||fs.classList.contains("hidden"))return;
-  const bar=fs.querySelector(".chartfs-bar"), tip=document.getElementById("crossTipBig"),
-        body=fs.querySelector(".chartfs-body"), tb=fs.querySelector(".fs-timebar");
-  // release previous constraint so measurements are natural
-  [bar,tip,body,tb].forEach(e=>{if(e){e.style.width="";e.style.marginLeft="";e.style.marginRight="";}});
-  if(window.innerWidth>=1000) return;   // desktop: the side-panel grid does the layout
-  const others=(bar?bar.offsetHeight:0)+(tip?tip.offsetHeight:0)+(tb?tb.offsetHeight:0);
-  const avail=Math.max(220, window.innerHeight-others-10);
-  const w=Math.floor(Math.min(avail*(500/560), window.innerWidth*0.97));
-  [bar,tip,body,tb].forEach(e=>{if(e){e.style.width=w+"px";e.style.marginLeft="auto";e.style.marginRight="auto";}});
+  // CSS owns the fullscreen layout now (edge-to-edge chart + floating readout on mobile,
+  // side-panel grid on desktop). Just clear any inline sizing left over from older builds.
+  const fs=document.getElementById("chartFs"); if(!fs)return;
+  fs.querySelectorAll(".chartfs-bar,.chartfs-body,.fs-timebar,#crossTipBig").forEach(e=>{
+    e.style.width="";e.style.marginLeft="";e.style.marginRight="";
+  });
 }
 window.addEventListener("resize",sizeFs);
 window.addEventListener("orientationchange",()=>setTimeout(sizeFs,120));
