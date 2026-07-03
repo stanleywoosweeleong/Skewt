@@ -334,8 +334,8 @@ body.lang-zh .crosstip .ttinterp{font-size:12.5px}
 details{margin:6px 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 summary{padding:12px 14px;font-size:13px;font-weight:700;cursor:pointer;list-style:none}
 summary::-webkit-details-marker{display:none}
-summary::after{content:"+";float:right;color:var(--dim);font-weight:800}
-details[open] summary::after{content:"–"}
+summary::after{content:"▾";float:right;color:var(--accent);font-weight:800;font-size:11px;transform:rotate(-90deg);transition:transform .15s;display:inline-block}
+details[open] summary::after{transform:rotate(0deg)}
 .dbody{padding:0 14px 14px;font-size:13.5px;color:var(--dim);line-height:1.65}
 .dbody b{color:var(--ink)}
 .err{margin:12px;padding:12px 14px;border-radius:10px;background:#2a1320;border:1px solid var(--danger);color:#ffb0c0;font-size:13px;line-height:1.5}
@@ -528,7 +528,7 @@ const MODELS=[
 /* ================= radiosonde overlay (observed balloon vs forecast) =================
    SONDE_WORKER: paste your deployed Cloudflare Worker URL here (see sonde-worker.js).
    Leave empty to disable — the button will show a setup hint instead of failing silently. */
-const APP_BUILD="v55";   // bump together with sw.js CACHE_VERSION on every deploy
+const APP_BUILD="v56";   // bump together with sw.js CACHE_VERSION on every deploy
 const SONDE_WORKER="https://sonde-worker.standphoto.workers.dev";
 const SONDE_STATIONS=[
   {id:"48601",name:"Penang 槟城",lat:5.30,lon:100.27},
@@ -579,10 +579,21 @@ async function toggleSonde(){
   if(!SONDE_WORKER){ sondeInfoMsg(L("未配置探空数据源 — 请部署 sonde-worker.js 并把网址填入 SONDE_WORKER。","Sonde source not configured — deploy sonde-worker.js and set SONDE_WORKER."),true); return; }
   const st=nearestSonde(LATLON[0],LATLON[1]);
   sondeInfoMsg(L(`正在获取 ${st.name} 实测探空…`,`Fetching ${st.name} sounding…`));
+  const base=`${SONDE_WORKER.replace(/\/$/,"")}/?stn=${st.id}`;
+  const ageOf=(iso)=>{ try{ return (Date.now()-new Date(iso).getTime())/3600e3; }catch(_){ return 999; } };
   try{
-    const r=await fetch(`${SONDE_WORKER.replace(/\/$/,"")}/?stn=${st.id}`);
-    const d=await r.json();
+    let r=await fetch(base);
+    let d=await r.json();
     if(!r.ok||!d.levels) throw new Error(d.error||("HTTP "+r.status));
+    // if what we got is stale (>13h), the worker may be serving a 6h-cached older cycle
+    // while a newer launch has since published upstream — force one uncached re-check.
+    if(ageOf(d.time)>13){
+      try{
+        const r2=await fetch(base+"&fresh="+Date.now());
+        const d2=await r2.json();
+        if(r2.ok&&d2.levels&&ageOf(d2.time)<ageOf(d.time)) d=d2;   // keep it only if genuinely newer
+      }catch(_){/* keep the first result */}
+    }
     SONDE={...d, stName:st.name.split(" ")[0], km:st.km};
     SONDE_ON=true; updateSondeUI(); if(DATA)showHour(CUR_I);
   }catch(e){
@@ -806,8 +817,8 @@ function buildGuide(){
     `<b>抬升气块（SB/ML/MU）：</b>图上方的选择器决定沿虚线抬升的是哪种气块。<b>SB 地面</b>＝地面空气（午后经典）；<b>ML 混合层</b>＝最底层100 hPa的平均（更能代表整层受热）；<b>MU 最不稳定</b>＝低层300 hPa内θe最高的那层 — <b>清晨逆温压住地面时，燃料常藏在逆温之上</b>，此时SB CAPE很小而MU CAPE很大。「CAPE 三气块」卡片一眼对比三者；「会下雨吗」面板的燃料用MU判断、盖子用SB判断，因此清晨不再低估午后风险。<br><br><b>DCAPE 下沉能量：</b>雨水在中层干空气中蒸发降温，冷空气砸向地面形成<b>下击暴流</b> — 会扫落果实、折断枝条。DCAPE越大风越猛：&lt;400弱，400–800中等，800–1200强，&gt;1200极强。<br><br><b>新图层：</b>青色细线＝<b>湿球温度</b>；右侧蓝色竖条＝<b>湿度/云层带</b>（越蓝越接近饱和）；「对比」下拉可叠加<b>第二个模式</b>（紫色曲线）直接看分歧；<b>时间-高度湿度图</b>把24小时的水汽结构铺成一张图，点任一列即可跳到该小时；📷按钮把当前探空图<b>生成图片分享</b>到 WhatsApp。`,
     `<b>Lifted parcels (SB/ML/MU):</b> the selector above the chart chooses which parcel rises along the dashed line. <b>SB Surface</b> = ground air (classic afternoon); <b>ML Mixed-layer</b> = average of the lowest 100 hPa (represents whole-layer heating); <b>MU Most-unstable</b> = the highest-θe level in the lowest 300 hPa — <b>on mornings when an inversion pins the surface, the fuel often hides above it</b>, so SB CAPE reads tiny while MU CAPE is large. The "CAPE 3 parcels" card compares all three at a glance; the storm panel judges fuel with MU and the cap with SB, so mornings no longer understate the afternoon threat.<br><br><b>DCAPE, downdraft energy:</b> rain evaporating into dry mid-level air chills it, and that cold air crashes to the ground as a <b>downburst</b> — the wind that strips fruit and snaps branches. Bigger DCAPE = harder crash: &lt;400 weak, 400–800 moderate, 800–1200 strong, &gt;1200 extreme.<br><br><b>New layers:</b> the thin cyan line is the <b>wet-bulb temperature</b>; the blue strip on the right edge is the <b>humidity/cloud bar</b> (bluer = closer to saturation); the <b>Compare</b> dropdown overlays a <b>second model</b> (violet curves) to see disagreement directly; the <b>time-height humidity panel</b> lays the whole day's moisture structure out in one picture — tap a column to jump to that hour; and the 📷 button renders the current sounding as an <b>image to share</b> on WhatsApp.`)
   +D(L("气块矩阵与降雨概率","The parcel matrix & rain probability"),
-    `<b>气块矩阵</b>把 SB/ML/MU 三个 CAPE 的<b>分歧模式</b>翻译成五种作业场景（隐藏燃料／全层蓄能／需午后加热／边缘／确实稳定），当前小时所属的一行会高亮 — 拖动小时条可以看到白天如何从「隐藏燃料」演变为「全层蓄能」。判断阈值：约800 J/kg以上算充足燃料，300以下算安静。<br><br><b>降雨概率</b>（风险条下方的蓝色小柱与头条的百分比）来自<b>模式集合（ensemble）</b>：同一模式用微扰初值跑多次，出现≥0.1毫米降雨的成员比例即为概率 — 这是比单一确定值更诚实的说法。注意：并非所有模式都提供概率；没有时该条会隐藏、头条不显示百分比，绝不编造。<br><br><b>集合降雨投影（扇形图）</b>更进一步：同一模式的<b>51个成员</b>各自给出每小时雨量，浅蓝阴影是成员的10–90%范围，深带是25–75%，亮线是中位数 — 扇形<b>越窄</b>成员越一致，预报越可信；<b>越宽</b>说明大气处于难料状态，一切计划都该留余量。点图任意处可跳到该小时。下方三个<b>分级概率</b>直接对应农事：≥1mm＝药液可能被冲（喷药风险）、≥5mm＝晒果/干燥中断、≥10mm＝收果运输受阻。右上角的一致性标签（高一致/中等/分歧大）是全天10–90%平均宽度的总结。<br><br>看不完这么多数据？顶部绿框的<b>〈农户小结〉</b>把矩阵、风险时段与集合概率压缩成一两句话，加上四盏贴合榴莲农事的作业灯：<b>喷药/叶面肥</b>与<b>晾晒</b>需要干燥（尤其干燥的早晨）窗口；<b>播种/施肥</b>正相反 — 有像样的雨水把它冲进土里才最理想，所以下雨概率高时才亮，太干时变暗；<b>运输/收果</b>是提醒灯，遇湿、雷暴或下击暴流日会警示。当好雨将至，小结还会提示可暂停灌溉。先看这盏灯，再决定要不要深入。`,
-    `The <b>parcel matrix</b> translates the <b>disagreement pattern</b> among the three CAPEs (SB/ML/MU) into five operational scenarios (hidden fuel / loaded everywhere / needs afternoon heating / marginal / genuinely stable). The current hour's row is highlighted — scrub the hours to watch a day evolve from "hidden fuel" into "loaded everywhere". Thresholds: ≥~800 J/kg counts as ample fuel, <300 as quiet.<br><br>The <b>rain probability</b> (small blue bars under the risk strip, and the percentage in the headline) comes from the <b>model ensemble</b>: the same model run many times with tiny perturbations, and the probability is the share of members producing ≥0.1 mm — an honest statement compared with a single deterministic number. Note: not every model provides it; when absent the strip hides and no percentage is shown — never invented.<br><br>The <b>ensemble rain projection (fan chart)</b> goes further: <b>51 members</b> of the same model each produce an hourly rainfall; the light-blue shade spans the members' 10–90% range, the darker band 25–75%, the bright line the median. A <b>narrow</b> fan means the members agree — trust the forecast; a <b>wide</b> fan means the atmosphere is in a hard-to-pin state — leave margin in every plan. Tap anywhere on the chart to jump to that hour. The three <b>tiered probabilities</b> below map straight to farm work: ≥1 mm = spray may wash off, ≥5 mm = drying disrupted, ≥10 mm = harvest logistics at risk. The agreement badge (high/moderate/low) summarizes the day's average 10–90% width.<br><br>Too much to digest? The green <b>Farmer's bottom line</b> box at the top compresses the matrix, risk timing and ensemble probabilities into a sentence or two plus four work lights mapped to real durian-farm decisions: <b>Spray / foliar</b> and <b>Sun-drying</b> want a dry (especially dry-morning) window; <b>Seed / fertilize</b> is the opposite — it lights up when a useful soaking is likely, since rain waters it in, and dims when the day is too dry to bother; <b>Transport / harvest</b> is a caution that flags wet, stormy or downburst days. When good rain is coming the summary also suggests pausing irrigation. Read that box first, then dig deeper if needed.`)
+    `<b>气块矩阵</b>把 SB/ML/MU 三个 CAPE 的<b>分歧模式</b>翻译成五种作业场景（隐藏燃料／全层蓄能／需午后加热／边缘／确实稳定），当前小时所属的一行会高亮 — 拖动小时条可以看到白天如何从「隐藏燃料」演变为「全层蓄能」。判断阈值：约800 J/kg以上算充足燃料，300以下算安静。<br><br><b>降雨概率</b>（风险条下方的蓝色小柱与头条的百分比）来自<b>模式集合（ensemble）</b>：同一模式用微扰初值跑多次，出现≥0.1毫米降雨的成员比例即为概率 — 这是比单一确定值更诚实的说法。注意：并非所有模式都提供概率；没有时该条会隐藏、头条不显示百分比，绝不编造。<br><br><b>集合降雨投影（扇形图）</b>更进一步：同一模式的<b>51个成员</b>各自给出每小时雨量，浅蓝阴影是成员的10–90%范围，深带是25–75%，亮线是中位数 — 扇形<b>越窄</b>成员越一致，预报越可信；<b>越宽</b>说明大气处于难料状态，一切计划都该留余量。点图任意处可跳到该小时。下方三个<b>分级概率</b>直接对应农事：≥1mm＝药液可能被冲（喷药风险）、≥5mm＝晒果/干燥中断、≥10mm＝收果运输受阻。右上角的一致性标签（高一致/中等/分歧大）是全天10–90%平均宽度的总结。<br><br>看不完这么多数据？顶部绿框的<b>〈农户小结〉</b>把矩阵、风险时段与集合概率压缩成一两句话，加上三盏贴合榴莲农事的作业灯：<b>喷药/叶面肥</b>与<b>晾晒</b>需要干燥（尤其干燥的早晨）窗口；<b>播种/施肥</b>正相反 — 有像样的雨水把它冲进土里才最理想，所以下雨概率高时才亮，太干时变暗。当好雨将至，小结还会提示可暂停灌溉。先看这盏灯，再决定要不要深入。`,
+    `The <b>parcel matrix</b> translates the <b>disagreement pattern</b> among the three CAPEs (SB/ML/MU) into five operational scenarios (hidden fuel / loaded everywhere / needs afternoon heating / marginal / genuinely stable). The current hour's row is highlighted — scrub the hours to watch a day evolve from "hidden fuel" into "loaded everywhere". Thresholds: ≥~800 J/kg counts as ample fuel, <300 as quiet.<br><br>The <b>rain probability</b> (small blue bars under the risk strip, and the percentage in the headline) comes from the <b>model ensemble</b>: the same model run many times with tiny perturbations, and the probability is the share of members producing ≥0.1 mm — an honest statement compared with a single deterministic number. Note: not every model provides it; when absent the strip hides and no percentage is shown — never invented.<br><br>The <b>ensemble rain projection (fan chart)</b> goes further: <b>51 members</b> of the same model each produce an hourly rainfall; the light-blue shade spans the members' 10–90% range, the darker band 25–75%, the bright line the median. A <b>narrow</b> fan means the members agree — trust the forecast; a <b>wide</b> fan means the atmosphere is in a hard-to-pin state — leave margin in every plan. Tap anywhere on the chart to jump to that hour. The three <b>tiered probabilities</b> below map straight to farm work: ≥1 mm = spray may wash off, ≥5 mm = drying disrupted, ≥10 mm = harvest logistics at risk. The agreement badge (high/moderate/low) summarizes the day's average 10–90% width.<br><br>Too much to digest? The green <b>Farmer's bottom line</b> box at the top compresses the matrix, risk timing and ensemble probabilities into a sentence or two plus three work lights mapped to real durian-farm decisions: <b>Spray / foliar</b> and <b>Sun-drying</b> want a dry (especially dry-morning) window; <b>Seed / fertilize</b> is the opposite — it lights up when a useful soaking is likely, since rain waters it in, and dims when the day is too dry to bother. When good rain is coming the summary also suggests pausing irrigation. Read that box first, then dig deeper if needed.`)
   +D(L("数据与计算精度","Data & computation accuracy"),
     `为保证可信，本应用的热力学全部在设备端按标准方法计算：饱和水汽压与LCL用 <b>Bolton (1980)</b> 公式；抬升气块沿守恒<b>相当位温 θe</b>（气块携带的总热量指标，含凝结潜热）的精确伪绝热线；CAPE/CIN 采用<b>虚温</b> — 含水汽的空气更轻，虚温就是把这一效应折算进温度。高度优先取<b>模式位势高度</b>（模式自算的各气压层海拔，减去地形高程得到离地高度 — 对金马仑等高原果园尤为重要），缺失时按温度廓线做流体静力学积分。数据缺失时显示“—”或明确提示，绝不静默编造 — 宁可大声失败，不给假数据。`,
     `For trust, all thermodynamics run on-device with standard methods: saturation vapour pressure and LCL from <b>Bolton (1980)</b>; the lifted parcel follows the exact pseudoadiabat conserving <b>equivalent potential temperature θe</b> (the total-heat tag a parcel carries, latent heat included); CAPE/CIN use <b>virtual temperature</b> — moist air is lighter, and Tv folds that into the temperature. Heights prefer the <b>model's geopotential heights</b> (its own altitude of each pressure level, minus terrain elevation for height above ground — important for highland farms like Cameron), falling back to hydrostatic integration of the temperature profile. Missing data shows "—" or an explicit notice, never a silent guess — loud failure over fake numbers.`)
@@ -1246,13 +1257,11 @@ function renderFarmerSummary(){
                  : (dayT5>=30||dayT1>=50)?"ok"                   // good soaking coming — ideal to apply
                  : "off";                                        // too dry to bother / no benefit
   // MOVEMENT job: harvest & transport — caution on wet, stormy, or downburst days
-  const move=light(worst>=3||dayT10>=30, worst>=2||dayT5>=40);
   const markSeed=(c)=>c==="ok"?"✓":c==="warn"?"⚠":"·";
   const ops=[
     [spray, mark(spray),  L("喷药/叶面肥","Spray / foliar")],
     [sundry,mark(sundry), L("晾晒","Sun-drying")],
     [seedFert==="off"?"":seedFert, markSeed(seedFert), L("播种/施肥","Seed / fertilize")],
-    [move,  mark(move),   L("运输/收果","Transport / harvest")],
   ].map(([c,m,t])=>`<div class="op ${c}"><b>${m}</b>${t}</div>`).join("");
   el.innerHTML=`<div class="fs-h">${L("农户小结 · 看这里就够","FARMER'S BOTTOM LINE")}</div>
     <div class="fs-line">${what}${ensLine?` ${ensLine}`:""}</div>
