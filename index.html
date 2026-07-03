@@ -183,6 +183,8 @@ button.compact{padding:9px 12px;font-size:15px;line-height:1}
 .chartfs-body svg{width:100%;height:100%;max-width:100%;display:block}
 .fs-timebar{padding:8px 16px calc(10px + env(safe-area-inset-bottom))}
 .fs-timebar .chart-hint{text-align:left;margin-top:8px;line-height:1.5}
+.fs-parcelwrap{text-align:center;margin-bottom:10px}
+.fs-parcelwrap .seg{display:inline-flex}
 .fs-slabel{text-align:center;font-size:13px;color:var(--dim);margin-bottom:8px}
 .fs-slabel b{color:var(--ink);font-weight:800}
 /* desktop enlarged view: chart fills the height on the left, readout + slider dock right.
@@ -231,12 +233,37 @@ svg{width:100%;height:auto;display:block;touch-action:manipulation}
 #hodowrap #wpTitle{margin-top:4px}
 #hodowrap .windslider-row{margin-top:2px}
 #hodowrap svg{max-width:340px;margin:0 auto;display:block}
-.parcelrow{display:flex;align-items:center;gap:10px;margin:2px 16px 6px;flex-wrap:wrap}
-.parcel-lbl{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.parcelrow{display:flex;align-items:center;gap:6px 10px;margin:2px 16px 6px;flex-wrap:wrap}
+.parcel-lbl{flex:0 0 100%;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg button{padding:7px 12px;font-size:12px;font-weight:700;background:transparent;border:none;border-right:1px solid var(--line);color:var(--dim);border-radius:0}
 .seg button:last-child{border-right:none}
 .seg button.on{color:var(--accent);background:rgba(255,122,60,.12)}
+.poprow{display:flex;align-items:flex-end;gap:2px;height:34px;margin:2px 16px 4px;padding:0 2px}
+.poprow .pb{flex:1;min-width:0;background:rgba(93,156,255,.55);border-radius:2px 2px 0 0;position:relative}
+.poprow .pb.on{background:var(--accent)}
+.poprow .pcap{flex:0 0 auto;font-size:9.5px;color:var(--faint);font-weight:700;writing-mode:initial;align-self:center;margin-right:4px}
+#enswrap{margin:4px 16px 8px}
+#enswrap svg{width:100%;display:block}
+.ens-cap{font-size:11.5px;color:var(--faint);margin:2px 2px 6px;line-height:1.5}
+.ens-cap b{color:var(--dim)}
+.ens-conf{display:inline-block;padding:1px 8px;border-radius:999px;font-weight:800;font-size:10.5px;margin-left:6px}
+.ens-conf.hi{color:#3ddc8c;border:1px solid rgba(61,220,140,.5)}
+.ens-conf.md{color:var(--warn);border:1px solid rgba(255,190,80,.5)}
+.ens-conf.lo{color:var(--danger);border:1px solid rgba(255,90,90,.5)}
+.ens-tiers{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.ens-tiers span{font-size:11.5px;font-weight:700;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.ens-tiers span b{color:var(--ink)}
+#pmatrix{margin:10px 16px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--panel)}
+#pmatrix .pm-title{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:4px}
+#pmatrix .pm-sub{font-size:11.5px;color:var(--faint);margin-bottom:8px}
+#pmatrix .pm-row{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:10px;opacity:.5}
+#pmatrix .pm-row.on{opacity:1;background:rgba(255,122,60,.10);outline:1px solid rgba(255,122,60,.4)}
+#pmatrix .pm-ic{flex:0 0 auto;font-size:15px;line-height:1.3}
+#pmatrix .pm-t{font-size:12.5px;font-weight:800;color:var(--ink)}
+#pmatrix .pm-d{font-size:11.5px;color:var(--dim);line-height:1.45}
+body.lang-zh #pmatrix .pm-t{font-size:13.5px}
+body.lang-zh #pmatrix .pm-d{font-size:12.5px;line-height:1.55}
 .windslider-row{display:flex;flex-direction:column;gap:4px;padding:2px 6px 10px}
 .hodonote{font-size:13.5px;color:var(--dim);line-height:1.55;max-width:520px;margin:0;text-align:left;padding:0 14px 12px}
 .notebox{margin:6px 16px 4px}
@@ -379,6 +406,9 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
     <svg id="chartBig" viewBox="0 0 500 560" preserveAspectRatio="xMidYMid meet"></svg>
   </div>
   <div class="fs-timebar">
+    <div class="fs-parcelwrap"><div class="seg" id="parcelSegFs">
+      <button data-parcel="sb"></button><button data-parcel="ml"></button><button data-parcel="mu"></button>
+    </div></div>
     <div class="fs-slabel" id="fsSliderLabel"></div>
     <div class="fs-slrow">
       <input type="range" id="fsSlider" min="0" max="23" value="0" step="1"/>
@@ -393,11 +423,19 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
 
 <div class="sect hidden" id="hoursLabel"></div>
 <div class="riskstrip hidden" id="riskstrip"></div>
+<div class="poprow hidden" id="poprow"></div>
 <div class="hours hidden" id="hours"></div>
 
 <div id="cards" class="cards hidden"></div>
 
 <div id="ingredients" class="hidden"></div>
+<div id="pmatrix" class="hidden"></div>
+<div id="enswrap" class="hidden">
+  <div class="cardsect" id="ensTitle"></div>
+  <div class="ens-cap" id="ensCap"></div>
+  <svg id="enschart" viewBox="0 0 360 170" preserveAspectRatio="xMidYMid meet"></svg>
+  <div class="ens-tiers" id="ensTiers"></div>
+</div>
 
 <div id="thwrap" class="hidden">
   <div class="cardsect" id="thTitle"></div>
@@ -708,6 +746,9 @@ function buildGuide(){
   +D(L("气块选择、DCAPE 与新图层","Parcels, DCAPE & the new layers"),
     `<b>抬升气块（SB/ML/MU）：</b>图上方的选择器决定沿虚线抬升的是哪种气块。<b>SB 地面</b>＝地面空气（午后经典）；<b>ML 混合层</b>＝最底层100 hPa的平均（更能代表整层受热）；<b>MU 最不稳定</b>＝低层300 hPa内θe最高的那层 — <b>清晨逆温压住地面时，燃料常藏在逆温之上</b>，此时SB CAPE很小而MU CAPE很大。「CAPE 三气块」卡片一眼对比三者；「会下雨吗」面板的燃料用MU判断、盖子用SB判断，因此清晨不再低估午后风险。<br><br><b>DCAPE 下沉能量：</b>雨水在中层干空气中蒸发降温，冷空气砸向地面形成<b>下击暴流</b> — 会扫落果实、折断枝条。DCAPE越大风越猛：&lt;400弱，400–800中等，800–1200强，&gt;1200极强。<br><br><b>新图层：</b>青色细线＝<b>湿球温度</b>；右侧蓝色竖条＝<b>湿度/云层带</b>（越蓝越接近饱和）；「对比」下拉可叠加<b>第二个模式</b>（紫色曲线）直接看分歧；<b>时间-高度湿度图</b>把24小时的水汽结构铺成一张图，点任一列即可跳到该小时；📷按钮把当前探空图<b>生成图片分享</b>到 WhatsApp。`,
     `<b>Lifted parcels (SB/ML/MU):</b> the selector above the chart chooses which parcel rises along the dashed line. <b>SB Surface</b> = ground air (classic afternoon); <b>ML Mixed-layer</b> = average of the lowest 100 hPa (represents whole-layer heating); <b>MU Most-unstable</b> = the highest-θe level in the lowest 300 hPa — <b>on mornings when an inversion pins the surface, the fuel often hides above it</b>, so SB CAPE reads tiny while MU CAPE is large. The "CAPE 3 parcels" card compares all three at a glance; the storm panel judges fuel with MU and the cap with SB, so mornings no longer understate the afternoon threat.<br><br><b>DCAPE, downdraft energy:</b> rain evaporating into dry mid-level air chills it, and that cold air crashes to the ground as a <b>downburst</b> — the wind that strips fruit and snaps branches. Bigger DCAPE = harder crash: &lt;400 weak, 400–800 moderate, 800–1200 strong, &gt;1200 extreme.<br><br><b>New layers:</b> the thin cyan line is the <b>wet-bulb temperature</b>; the blue strip on the right edge is the <b>humidity/cloud bar</b> (bluer = closer to saturation); the <b>Compare</b> dropdown overlays a <b>second model</b> (violet curves) to see disagreement directly; the <b>time-height humidity panel</b> lays the whole day's moisture structure out in one picture — tap a column to jump to that hour; and the 📷 button renders the current sounding as an <b>image to share</b> on WhatsApp.`)
+  +D(L("气块矩阵与降雨概率","The parcel matrix & rain probability"),
+    `<b>气块矩阵</b>把 SB/ML/MU 三个 CAPE 的<b>分歧模式</b>翻译成五种作业场景（隐藏燃料／全层蓄能／需午后加热／边缘／确实稳定），当前小时所属的一行会高亮 — 拖动小时条可以看到白天如何从「隐藏燃料」演变为「全层蓄能」。判断阈值：约800 J/kg以上算充足燃料，300以下算安静。<br><br><b>降雨概率</b>（风险条下方的蓝色小柱与头条的百分比）来自<b>模式集合（ensemble）</b>：同一模式用微扰初值跑多次，出现≥0.1毫米降雨的成员比例即为概率 — 这是比单一确定值更诚实的说法。注意：并非所有模式都提供概率；没有时该条会隐藏、头条不显示百分比，绝不编造。<br><br><b>集合降雨投影（扇形图）</b>更进一步：同一模式的<b>51个成员</b>各自给出每小时雨量，浅蓝阴影是成员的10–90%范围，深带是25–75%，亮线是中位数 — 扇形<b>越窄</b>成员越一致，预报越可信；<b>越宽</b>说明大气处于难料状态，一切计划都该留余量。点图任意处可跳到该小时。下方三个<b>分级概率</b>直接对应农事：≥1mm＝药液可能被冲（喷药风险）、≥5mm＝晒果/干燥中断、≥10mm＝收果运输受阻。右上角的一致性标签（高一致/中等/分歧大）是全天10–90%平均宽度的总结。`,
+    `The <b>parcel matrix</b> translates the <b>disagreement pattern</b> among the three CAPEs (SB/ML/MU) into five operational scenarios (hidden fuel / loaded everywhere / needs afternoon heating / marginal / genuinely stable). The current hour's row is highlighted — scrub the hours to watch a day evolve from "hidden fuel" into "loaded everywhere". Thresholds: ≥~800 J/kg counts as ample fuel, <300 as quiet.<br><br>The <b>rain probability</b> (small blue bars under the risk strip, and the percentage in the headline) comes from the <b>model ensemble</b>: the same model run many times with tiny perturbations, and the probability is the share of members producing ≥0.1 mm — an honest statement compared with a single deterministic number. Note: not every model provides it; when absent the strip hides and no percentage is shown — never invented.<br><br>The <b>ensemble rain projection (fan chart)</b> goes further: <b>51 members</b> of the same model each produce an hourly rainfall; the light-blue shade spans the members' 10–90% range, the darker band 25–75%, the bright line the median. A <b>narrow</b> fan means the members agree — trust the forecast; a <b>wide</b> fan means the atmosphere is in a hard-to-pin state — leave margin in every plan. Tap anywhere on the chart to jump to that hour. The three <b>tiered probabilities</b> below map straight to farm work: ≥1 mm = spray may wash off, ≥5 mm = drying disrupted, ≥10 mm = harvest logistics at risk. The agreement badge (high/moderate/low) summarizes the day's average 10–90% width.`)
   +D(L("数据与计算精度","Data & computation accuracy"),
     `为保证可信，本应用的热力学全部在设备端按标准方法计算：饱和水汽压与LCL用 <b>Bolton (1980)</b> 公式；抬升气块沿守恒<b>相当位温 θe</b>（气块携带的总热量指标，含凝结潜热）的精确伪绝热线；CAPE/CIN 采用<b>虚温</b> — 含水汽的空气更轻，虚温就是把这一效应折算进温度。高度优先取<b>模式位势高度</b>（模式自算的各气压层海拔，减去地形高程得到离地高度 — 对金马仑等高原果园尤为重要），缺失时按温度廓线做流体静力学积分。数据缺失时显示“—”或明确提示，绝不静默编造 — 宁可大声失败，不给假数据。`,
     `For trust, all thermodynamics run on-device with standard methods: saturation vapour pressure and LCL from <b>Bolton (1980)</b>; the lifted parcel follows the exact pseudoadiabat conserving <b>equivalent potential temperature θe</b> (the total-heat tag a parcel carries, latent heat included); CAPE/CIN use <b>virtual temperature</b> — moist air is lighter, and Tv folds that into the temperature. Heights prefer the <b>model's geopotential heights</b> (its own altitude of each pressure level, minus terrain elevation for height above ground — important for highland farms like Cameron), falling back to hydrostatic integration of the temperature profile. Missing data shows "—" or an explicit notice, never a silent guess — loud failure over fake numbers.`)
@@ -766,10 +807,11 @@ function applyStaticLang(){
   T("thTitle", L("时间-高度湿度图 · 看整天的水汽结构","Time-height humidity · the day's moisture structure"));
   T("thHint", L("每列＝一小时，越蓝＝越接近饱和（成云）。蓝色虚线＝0°C层。点击任一列跳到该小时。","Each column = one hour; bluer = closer to saturation (cloud). Dashed cyan = 0°C level. Tap a column to jump to that hour."));
   populateCmpSel();
-  (function(){const seg=document.getElementById("parcelSeg"); if(seg){
+  if(typeof ENS!=="undefined"&&ENS&&!ENS.error) renderEnsemble();
+  (function(){
     const lbl={sb:L("地面 SB","Surface SB"),ml:L("混合层 ML","Mixed ML"),mu:L("最不稳定 MU","Most-unstable MU")};
-    seg.querySelectorAll("button").forEach(b=>b.textContent=lbl[b.dataset.parcel]);
-  } updateParcelSeg();})();
+    document.querySelectorAll("#parcelSeg button, #parcelSegFs button").forEach(b=>b.textContent=lbl[b.dataset.parcel]);
+    updateParcelSeg();})();
   T("lblModel2", L("默认天气模式（可选，来自 RainScore Lab 结论）","Default weather model (optional, from RainScore Lab findings)"));
   populateModelSel();
   populateFarmModelSel();
@@ -854,7 +896,7 @@ function xOf(Tc,p){
 async function getSounding(lat,lon,modelOverride){
   const hv=LEVELS.map(p=>`temperature_${p}hPa,relative_humidity_${p}hPa,wind_speed_${p}hPa,wind_direction_${p}hPa,geopotential_height_${p}hPa`).join(",");
   const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
-    `&hourly=${hv},temperature_2m,dew_point_2m,relative_humidity_2m,surface_pressure,precipitation,cape,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility,weather_code`+
+    `&hourly=${hv},temperature_2m,dew_point_2m,relative_humidity_2m,surface_pressure,precipitation,cape,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility,weather_code,precipitation_probability`+
     `&forecast_days=2&timezone=auto&models=${modelOverride||MODEL}`;
   const r=await fetch(url);
   if(!r.ok) throw new Error("Weather service returned "+r.status);
@@ -880,7 +922,9 @@ function buildProfile(d,i){
   }
   prof.sort((a,b)=>b.p-a.p);
   const g=(k)=>h[k]?h[k][i]:null;
-  return {prof, elev:(d.elevation!=null?d.elevation:null), precip:h.precipitation[i]||0, cape:h.cape?h.cape[i]:null, time:h.time[i],
+  return {prof, elev:(d.elevation!=null?d.elevation:null), precip:h.precipitation[i]||0,
+    pop:(h.precipitation_probability&&h.precipitation_probability[i]!=null)?h.precipitation_probability[i]:null,
+    cape:h.cape?h.cape[i]:null, time:h.time[i],
     windSpd:g("wind_speed_10m"), windDir:g("wind_direction_10m"), gust:g("wind_gusts_10m"),
     cloud:g("cloud_cover"), cloudLow:g("cloud_cover_low"), cloudMid:g("cloud_cover_mid"), cloudHigh:g("cloud_cover_high"),
     vis:g("visibility"), rhSfc:h.relative_humidity_2m?h.relative_humidity_2m[i]:null,
@@ -950,6 +994,144 @@ function dcapeWord(d){
   if(d<800)  return L("中等 — 阵风可观","moderate — gusty outflow");
   if(d<1200) return L("强 — 谨防下击暴流损果","strong — downburst may strip fruit");
   return L("极强 — 严防落地强风","extreme — damaging downburst winds");
+}
+/* ================= ensemble rain projection (real members, not a derived guess) ================= */
+let ENS=null;   // {model,nMembers,stats:[{p10,p25,p50,p75,p90,t1,t5,t10}] indexed by hour, confWord, confCls}
+const ENS_MAP={ // deterministic model -> matching ensemble suite (ECMWF fallback for models without one)
+  ecmwf_ifs025:"ecmwf_ifs025", ecmwf_ifs:"ecmwf_ifs025", ecmwf_aifs025_single:"ecmwf_ifs025",
+  gfs_seamless:"gfs_seamless", gfs_graphcast025:"gfs_seamless",
+  icon_seamless:"icon_seamless", gem_global:"gem_global",
+  jma_gsm:"ecmwf_ifs025", cma_grapes_global:"ecmwf_ifs025",
+};
+function pctl(sorted,f){ const n=sorted.length; if(!n)return null;
+  const idx=f*(n-1), lo=Math.floor(idx), hi=Math.ceil(idx);
+  return sorted[lo]+(sorted[hi]-sorted[lo])*(idx-lo); }
+function ensStats(members,i){
+  const v=members.map(m=>m[i]).filter(x=>x!=null&&isFinite(x)).sort((a,b)=>a-b);
+  if(v.length<5)return null;
+  const n=v.length;
+  return { p10:pctl(v,.10),p25:pctl(v,.25),p50:pctl(v,.50),p75:pctl(v,.75),p90:pctl(v,.90),
+    t1:Math.round(100*v.filter(x=>x>=1).length/n),
+    t5:Math.round(100*v.filter(x=>x>=5).length/n),
+    t10:Math.round(100*v.filter(x=>x>=10).length/n) };
+}
+async function fetchEnsemble(){
+  ENS=null; renderEnsemble();
+  if(!LATLON)return;
+  const em=ENS_MAP[MODEL]||"ecmwf_ifs025";
+  try{
+    const url=`https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${LATLON[0]}&longitude=${LATLON[1]}`+
+      `&hourly=precipitation&models=${em}&forecast_days=2&timezone=auto`;
+    const r=await fetch(url);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const d=await r.json();
+    const h=d.hourly||{};
+    const members=Object.keys(h).filter(k=>/^precipitation(_member\d+)?$/.test(k)).map(k=>h[k]);
+    if(members.length<5) throw new Error(L("该模式无集合数据","no ensemble for this model"));
+    const stats=[]; for(let i=0;i<h.time.length;i++) stats[i]=ensStats(members,i);
+    // day confidence: mean 10-90 width over the visible window
+    let wsum=0,wn=0;
+    for(let i=HR_START;i<=Math.min(HR_END,stats.length-1);i++){ if(stats[i]){wsum+=stats[i].p90-stats[i].p10;wn++;} }
+    const w=wn?wsum/wn:0;
+    const conf = w<1.5?["hi",L("高一致","high agreement")] : w<5?["md",L("中等一致","moderate agreement")] : ["lo",L("分歧大","low agreement")];
+    ENS={model:em,nMembers:members.length,stats,confCls:conf[0],confWord:conf[1],w};
+  }catch(e){
+    ENS={error:String(e.message||e)};
+  }
+  renderEnsemble();
+}
+function renderEnsemble(){
+  const wrap=document.getElementById("enswrap"), svg=document.getElementById("enschart"),
+        cap=document.getElementById("ensCap"), tiers=document.getElementById("ensTiers");
+  if(!wrap||!svg)return;
+  const T=document.getElementById("ensTitle");
+  if(T)T.textContent=L("集合降雨投影 · 51种未来的雨","Ensemble rain projection · many futures of rain");
+  svg.innerHTML=""; if(tiers)tiers.innerHTML="";
+  if(!ENS){ if(cap)cap.textContent=L("正在获取集合成员…","Fetching ensemble members…"); return; }
+  if(ENS.error){ if(cap)cap.textContent=L("集合数据获取失败：","Ensemble fetch failed: ")+ENS.error; return; }
+  const st=ENS.stats;
+  const ENS_SHORT={ecmwf_ifs025:"IFS",gfs_seamless:"GFS",icon_seamless:"ICON",gem_global:"GEM"};
+  const short=ENS_SHORT[ENS.model]||ENS.model;
+  if(cap)cap.innerHTML=L(
+    `<b>${short}</b> 集合 · ${ENS.nMembers} 成员 — 阴影＝成员的10–90%范围，深带＝25–75%，实线＝中位数`+
+    `<span class="ens-conf ${ENS.confCls}">${ENS.confWord}</span>`,
+    `<b>${short}</b> ensemble · ${ENS.nMembers} members — shade = 10–90% of members, dark band = 25–75%, line = median`+
+    `<span class="ens-conf ${ENS.confCls}">${ENS.confWord}</span>`);
+  const X0e=34,X1e=352,Y0e=8,Y1e=136;
+  const n=HR_END-HR_START+1, xOf=i=>X0e+(i-HR_START)/(n-1)*(X1e-X0e);
+  let vmax=2; for(let i=HR_START;i<=HR_END;i++){ if(st[i])vmax=Math.max(vmax,st[i].p90); }
+  vmax=Math.ceil(vmax*1.15);
+  const yOf=v=>Y1e-(v/vmax)*(Y1e-Y0e);
+  const g=el("g",{}); svg.appendChild(g);
+  for(const v of [0,Math.round(vmax/2),vmax]){
+    g.appendChild(line(X0e,yOf(v),X1e,yOf(v),"var(--line)",0.6));
+    g.appendChild(txt(X0e-4,yOf(v)+3,String(v),'tick',"end","var(--faint)"));
+  }
+  const band=(loK,hiK,fill,op)=>{
+    const up=[],dn=[];
+    for(let i=HR_START;i<=HR_END;i++){ if(!st[i])continue; up.push(`${xOf(i)},${yOf(st[i][hiK])}`); dn.unshift(`${xOf(i)},${yOf(st[i][loK])}`); }
+    if(up.length>1) g.appendChild(el("polygon",{points:up.concat(dn).join(" "),fill,opacity:op}));
+  };
+  band("p10","p90","#5d9cff",0.16);
+  band("p25","p75","#5d9cff",0.26);
+  const med=[]; for(let i=HR_START;i<=HR_END;i++){ if(st[i])med.push([xOf(i),yOf(st[i].p50)]); }
+  if(med.length>1)g.appendChild(poly(med,"#9cc4ff",1.8));
+  for(let i=HR_START;i<=HR_END;i++){
+    if((i-HR_START)%6===0) g.appendChild(txt(xOf(i),Y1e+14,fmtHour(DATA.hourly.time[i]),'tick',"middle","var(--faint)"));
+  }
+  g.appendChild(el("line",{id:"ensCur",x1:xOf(CUR_I),x2:xOf(CUR_I),y1:Y0e,y2:Y1e,stroke:"var(--accent)","stroke-width":1.4,"stroke-dasharray":"3 3"}));
+  ENS.geo={X0e,X1e,n,Y0e,Y1e};
+  const hit=el("rect",{x:X0e,y:Y0e,width:X1e-X0e,height:Y1e-Y0e,fill:"transparent"});
+  hit.style.cursor="pointer";
+  hit.addEventListener("click",ev=>{
+    const r=svg.getBoundingClientRect();
+    const fx=(ev.clientX-r.left)/r.width*360;
+    showHour(HR_START+Math.round((fx-X0e)/(X1e-X0e)*(n-1)));
+  });
+  g.appendChild(hit);
+  updateEnsHour(CUR_I);
+}
+function updateEnsHour(i){
+  if(!ENS||!ENS.stats)return;
+  const c=document.getElementById("ensCur");
+  if(c&&ENS.geo){ const x=ENS.geo.X0e+(i-HR_START)/(ENS.geo.n-1)*(ENS.geo.X1e-ENS.geo.X0e); c.setAttribute("x1",x);c.setAttribute("x2",x); }
+  const t=document.getElementById("ensTiers"), s=ENS.stats[i];
+  if(t) t.innerHTML = s
+    ? L(`<span>≥1mm <b>${s.t1}%</b></span><span>≥5mm <b>${s.t5}%</b></span><span>≥10mm <b>${s.t10}%</b></span><span>中位 <b>${s.p50.toFixed(1)}</b> mm</span>`,
+        `<span>≥1mm <b>${s.t1}%</b></span><span>≥5mm <b>${s.t5}%</b></span><span>≥10mm <b>${s.t10}%</b></span><span>median <b>${s.p50.toFixed(1)}</b> mm</span>`)
+    : "";
+}
+/* ---- parcel-pattern matrix: classify the SB/ML/MU disagreement into an operational scenario ---- */
+function classifyParcels(A){
+  const sb=A.capeSB??0, ml=A.capeML??0, mu=A.capeMU??0;
+  const hi=800, lo=300;
+  if(mu>=hi && sb<Math.max(400,mu*0.35)) return "hidden";     // fuel above a lid
+  if(Math.min(sb,ml,mu)>=hi)             return "loaded";     // unstable everywhere
+  if(Math.max(sb,ml,mu)<lo)              return "stable";     // genuinely quiet
+  if(ml>=hi && sb<ml*0.6)                return "heating";    // needs afternoon mixing
+  return "mixed";
+}
+function parcelMatrixRows(){
+  return [
+    {k:"hidden", ic:"⏳", t:L("隐藏燃料（逆温之上）","Hidden fuel (above a lid)"),
+      d:L("MU 远大于 SB — 地面平静是假象，午后逆温被晒穿会一次性爆发。早上尽早喷药、收果、收网；别信蓝天。","MU ≫ SB — the calm surface is a deadline. Once heating breaks the lid, it releases at once. Spray/harvest early; don't trust the blue sky.")},
+    {k:"loaded", ic:"⚡", t:L("全层蓄能","Loaded everywhere"),
+      d:L("SB/ML/MU 全都高 — 无盖无缓冲，任何触发随时起风暴。没有安全窗口，见塔状积云即警。","All three high — no cap, no buffer. Any trigger fires storms. No safe window; the first tower is the warning.")},
+    {k:"heating", ic:"🌤️", t:L("需午后加热","Needs afternoon heating"),
+      d:L("ML 高而 SB 一般 — 要等太阳把底层搅匀，风暴多在午后中段。上午是可用的作业窗口。","ML high, SB modest — storms wait for the boundary layer to mix, typically mid-afternoon. The morning is a usable work window.")},
+    {k:"mixed", ic:"🌦️", t:L("边缘／混合","Marginal / mixed"),
+      d:L("三气块分歧不典型 — 关注逐小时趋势与触发（海风、山地、辐合）。","Parcels disagree atypically — watch the hourly trend and triggers (sea breeze, hills, convergence).")},
+    {k:"stable", ic:"✅", t:L("确实稳定","Genuinely stable"),
+      d:L("三气块都低 — 查过隐藏燃料也没有。这是有把握的喷药/晒果窗口，不是侥幸。","All three low — hidden fuel checked and absent. A confident spray/dry window, not a hopeful one.")},
+  ];
+}
+function renderParcelMatrix(A){
+  const el=document.getElementById("pmatrix"); if(!el||!A)return;
+  const act=classifyParcels(A);
+  const f0=(x)=>x!=null&&isFinite(x)?Math.round(x):"—";
+  el.innerHTML=`<div class="pm-title">${L("气块矩阵 · 今天属于哪种天？","Parcel matrix · what kind of day is this?")}</div>
+    <div class="pm-sub">SB ${f0(A.capeSB)} · ML ${f0(A.capeML)} · MU ${f0(A.capeMU)} J/kg</div>`+
+    parcelMatrixRows().map(r=>`<div class="pm-row${r.k===act?" on":""}"><div class="pm-ic">${r.ic}</div><div><div class="pm-t">${r.t}</div><div class="pm-d">${r.d}</div></div></div>`).join("");
 }
 let PARCEL_SEL=(function(){ try{const v=localStorage.getItem("skewt.parcel.v1"); return ["sb","ml","mu"].includes(v)?v:"sb";}catch(e){return "sb";} })();
 function analyze(P){
@@ -1760,7 +1942,7 @@ function render(P,A,fc){
     : "";
   document.getElementById("verdict").innerHTML=
     `<div class="h">${L("预报","Forecast")} · ${fc}</div>
-     <div class="big">${rainWord} · ${L(`本小时 ${rain.toFixed(1)} mm`,`${rain.toFixed(1)} mm this hour`)} ${pill(lbl,col)}</div>
+     <div class="big">${rainWord} · ${L(`本小时 ${rain.toFixed(1)} mm`,`${rain.toFixed(1)} mm this hour`)}${P.pop!=null?` · ${Math.round(P.pop)}%`:""} ${pill(lbl,col)}</div>
      <p>${txt2} ${A.cin<-50?L(`盖状逆温（CIN ${Math.round(A.cin)} J/kg）正在压制风暴 — 需先被侵蚀。`,`A capping inversion (${Math.round(A.cin)} J/kg CIN) is currently suppressing storms — it must erode first.`):""}</p>
      <p style="margin-top:8px">☁️ ${cloudWord(P.cloud)}${L(`（云量${P.cloud!=null?Math.round(P.cloud):"—"}%）`,` (${P.cloud!=null?Math.round(P.cloud):"—"}% sky)`)} · 💨 ${windLine} · 🌫️ ${fogLbl}${L("。",". ")}${fogTxt}</p>`;
 
@@ -2043,6 +2225,25 @@ function buildHourStrip(){
       rs.appendChild(seg);
     }
   }
+  // rain-probability strip (ensemble-based; hidden with a shrug when the model lacks it)
+  (function(){
+    const pr=document.getElementById("poprow"); if(!pr)return;
+    const arr=DATA.hourly.precipitation_probability;
+    const has=arr&&arr.slice(HR_START,HR_END+1).some(v=>v!=null);
+    pr.classList.toggle("hidden",!has);
+    if(!has){pr.innerHTML="";return;}
+    pr.innerHTML=`<span class="pcap">${L("概率%","prob%")}</span>`;
+    for(let i=HR_START;i<=HR_END;i++){
+      const v=arr[i]==null?0:arr[i];
+      const b=document.createElement("div");
+      b.className="pb"+(i===CUR_I?" on":"");
+      b.style.height=Math.max(6,Math.round(v/100*34))+"px";
+      b.title=Math.round(v)+"%";
+      b.dataset.i=i;
+      b.onclick=()=>showHour(i);
+      pr.appendChild(b);
+    }
+  })();
   // one stable wind axis for the whole day: max over 24h, +8% headroom, nice 20s, floor 60
   WIND_SCALE_MAX = dayMaxWs>0 ? Math.max(60, Math.ceil(dayMaxWs*1.08/20)*20) : null;
   HT_SCALE_MAX  = dayMaxHt>0 ? Math.max(4, Math.ceil((dayMaxHt/1000)/2)*2) : null;
@@ -2079,6 +2280,9 @@ function showHour(i){
   drawTimeHeight();
   const wlb=document.getElementById("windSliderLabel"); if(wlb) wlb.innerHTML=labHtml;
   updateThCursor(i);   // time-height panel cursor follows the hour
+  renderParcelMatrix(LAST_A);
+  updateEnsHour(i);
+  document.querySelectorAll("#poprow .pb").forEach(b=>b.classList.toggle("on",+b.dataset.i===i));
 }
 let LAST_P=null, LAST_A=null;
 function openFullscreen(){
@@ -2098,7 +2302,7 @@ async function load(lat,lon,label){
     DATA=await getSounding(lat,lon); LATLON=[lat,lon]; LASTLABEL=label||null;
     SONDE=null; SONDE_ON=false; updateSondeUI();   // sonde overlay is per-location: reset on change
     renderLocCaption();
-    ["loc","hours","hoursLabel","riskstrip","verdict","crossTip","parcelRow","chartwrap","legendWrap","cards","ingredients","hodowrap","thwrap","explain"].forEach(id=>document.getElementById(id).classList.remove("hidden"));
+    ["loc","hours","hoursLabel","riskstrip","verdict","crossTip","parcelRow","chartwrap","legendWrap","cards","ingredients","pmatrix","enswrap","hodowrap","thwrap","explain"].forEach(id=>document.getElementById(id).classList.remove("hidden"));
     document.getElementById("err").classList.add("hidden");
     document.getElementById("reloadBtn").classList.remove("hidden");
     document.getElementById("shareBtn").classList.remove("hidden");
@@ -2106,6 +2310,7 @@ async function load(lat,lon,label){
     st.textContent="";
     buildHourStrip();
     if(SONDE_WORKER && sondePrefOn()) toggleSonde();   // observed sounding overlays by default (user's hide choice is remembered)
+    fetchEnsemble();   // ensemble fan refreshes per location/model (async, never blocks the chart)
     if(COMPARE_MODEL) refreshCompare();                // second-model overlay follows the location
     // bring the chart into view consistently: only if the user is scrolled down,
     // and jump instantly rather than a long smooth animation that feels like a lurch.
@@ -2161,11 +2366,11 @@ document.getElementById("cmpSel").onchange=e=>{
   refreshCompare();
 };
 function updateParcelSeg(){
-  document.querySelectorAll("#parcelSeg button").forEach(b=>{
+  document.querySelectorAll("#parcelSeg button, #parcelSegFs button").forEach(b=>{
     b.classList.toggle("on", b.dataset.parcel===PARCEL_SEL);
   });
 }
-document.querySelectorAll("#parcelSeg button").forEach(b=>b.onclick=()=>{
+document.querySelectorAll("#parcelSeg button, #parcelSegFs button").forEach(b=>b.onclick=()=>{
   PARCEL_SEL=b.dataset.parcel;
   try{localStorage.setItem("skewt.parcel.v1",PARCEL_SEL);}catch(e){}
   updateParcelSeg();
