@@ -154,7 +154,7 @@ button.compact{padding:9px 12px;font-size:15px;line-height:1}
 .chartwrap{padding:6px 10px;position:relative}
 .crosstip{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(18,24,40,.95);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--ink);line-height:1.5;pointer-events:none;opacity:1;transition:opacity .12s;backdrop-filter:blur(3px);white-space:nowrap;z-index:5;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 .crosstip-fs{position:static;transform:none;margin:2px 16px 8px;left:auto;top:auto;white-space:normal;box-shadow:none;background:var(--panel2)}
-.crosstip-inline{position:static;transform:none;margin:4px 12px 6px;left:auto;top:auto;white-space:normal;box-shadow:none;background:var(--panel2)}
+.crosstip-inline{position:static;transform:none;margin:4px 12px 6px;left:auto;top:auto;white-space:normal;box-shadow:none;background:var(--panel2);min-height:176px}
 .crosstip b{font-size:13px}
 .crosstip .ttrow{display:flex;align-items:center;gap:5px;margin-top:3px;color:var(--dim)}
 .crosstip .ttrow i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-left:2px}
@@ -185,6 +185,7 @@ button.compact{padding:9px 12px;font-size:15px;line-height:1}
 .fs-timebar .chart-hint{text-align:left;margin-top:8px;line-height:1.5}
 .fs-parcelwrap{text-align:center;margin-bottom:10px}
 .fs-parcelwrap .seg{display:inline-flex}
+.fs-cmpsel{display:block;margin:0 auto 8px;max-width:300px;width:92%;padding:7px 10px;font-size:12.5px;font-weight:700;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;text-align:center;text-align-last:center;-webkit-appearance:none;appearance:none}
 .fs-slabel{text-align:center;font-size:13px;color:var(--dim);margin-bottom:8px}
 .fs-slabel b{color:var(--ink);font-weight:800}
 /* desktop enlarged view: chart fills the height on the left, readout + slider dock right.
@@ -280,7 +281,7 @@ body.lang-zh #pmatrix .pm-d{font-size:12.5px;line-height:1.55}
 .notebox{margin:6px 16px 4px}
 .crosstip .ttinterp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:5px;padding-top:5px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--dim);line-height:1.45;min-height:calc(2 * 1.45em + 5px)}
 body.lang-zh .crosstip .ttinterp{font-size:12.5px}
-.frow .rowmodel{flex:0 0 auto;max-width:96px;margin-left:8px;padding:4px 6px;font-size:11px;font-weight:700;color:var(--accent);background:transparent;border:1px solid var(--line);border-radius:8px;-webkit-appearance:none;appearance:none}
+.frow .rowmodel{flex:0 0 auto;max-width:96px;margin-left:8px;padding:4px 6px;font-size:11px;font-weight:700;color:var(--accent);background:transparent;border:1px solid var(--line);border-radius:8px;-webkit-appearance:none;appearance:none;text-align:center;text-align-last:center}
 .sonderow{display:flex;align-items:center;gap:10px;margin:8px 16px 0}
 .sonderow button{flex:0 0 auto;padding:6px 12px;font-size:12.5px;font-weight:700;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--dim)}
 .sonderow button.on{color:var(--accent);border-color:var(--accent)}
@@ -309,7 +310,7 @@ body.lang-zh .crosstip .ttinterp{font-size:12.5px}
 .card .v{font-size:19px;font-weight:800;margin-top:3px}
 .card .d{font-size:12.5px;color:var(--dim);margin-top:3px;line-height:1.45}
 .card .v .u{font-size:12px;color:var(--dim);font-weight:600}
-.verdict{margin:8px 12px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel)}
+.verdict{margin:8px 12px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);min-height:200px}
 .verdict .h{font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:800;color:var(--faint)}
 .verdict .big{font-size:17px;font-weight:800;margin:5px 0 6px}
 .verdict p{font-size:13px;color:var(--dim);line-height:1.5}
@@ -347,7 +348,6 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
 </div>
 <div class="modelrow"><label id="modelLbl" for="modelSel">模式</label><select id="modelSel"></select><span class="mnote" id="modelNote"></span></div>
 <div class="sonderow"><button id="sondeBtn">🎈</button><span class="sondeinfo" id="sondeInfo"></span></div>
-<div class="modelrow cmprow"><label id="cmpLbl" for="cmpSel">对比</label><select id="cmpSel"></select></div>
 
 <div class="pickwrap" id="pickwrap">
   <button class="listhead" id="listHead"><span class="lh-caret" id="lhCaret">▸</span><span class="lh-title" id="lhTitle">果园列表</span><span class="lh-count" id="lhCount">114</span></button>
@@ -410,6 +410,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
   <button class="expand-btn snap-btn" id="snapBtn" title="Share chart image">📷</button>
   <button class="expand-btn" id="expandBtn" title="Enlarge">⤢</button>
 </div>
+<div class="modelrow cmprow hidden" id="cmprow"><label id="cmpLbl" for="cmpSel">对比</label><select id="cmpSel"></select></div>
 
 <div class="chartfs hidden" id="chartFs">
   <div class="chartfs-bar"><span id="fsTitle">Sounding</span><button class="fs-close" id="fsClose" title="Close" aria-label="Close">✕</button></div>
@@ -418,7 +419,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
     <svg id="chartBig" viewBox="0 0 500 560" preserveAspectRatio="xMidYMid meet"></svg>
   </div>
   <div class="fs-timebar">
-    <div class="fs-parcelwrap"><div class="seg" id="parcelSegFs">
+    <div class="fs-parcelwrap"><select id="cmpSelFs" class="fs-cmpsel"></select><div class="seg" id="parcelSegFs">
       <button data-parcel="sb"></button><button data-parcel="ml"></button><button data-parcel="mu"></button>
     </div></div>
     <div class="fs-slabel" id="fsSliderLabel"></div>
@@ -512,7 +513,7 @@ const MODELS=[
 /* ================= radiosonde overlay (observed balloon vs forecast) =================
    SONDE_WORKER: paste your deployed Cloudflare Worker URL here (see sonde-worker.js).
    Leave empty to disable — the button will show a setup hint instead of failing silently. */
-const APP_BUILD="v49";   // bump together with sw.js CACHE_VERSION on every deploy
+const APP_BUILD="v50";   // bump together with sw.js CACHE_VERSION on every deploy
 const SONDE_WORKER="https://sonde-worker.standphoto.workers.dev";
 const SONDE_STATIONS=[
   {id:"48601",name:"Penang 槟城",lat:5.30,lon:100.27},
@@ -577,9 +578,16 @@ async function toggleSonde(){
 let COMPARE_MODEL=(function(){ try{const v=localStorage.getItem("skewt.cmp.v1"); return MODELS.some(m=>m.api===v)?v:""; }catch(e){ return ""; } })();
 let DATA2=null;
 function populateCmpSel(){
-  const sel=document.getElementById("cmpSel"); if(!sel)return;
-  sel.innerHTML=`<option value=""${COMPARE_MODEL===""?" selected":""}>${L("关闭对比","Compare off")}</option>`+
-    MODELS.map(m=>`<option value="${m.api}"${m.api===COMPARE_MODEL?" selected":""}>${m.short} · ${L(m.zh,m.en)}</option>`).join("");
+  for(const id of ["cmpSel","cmpSelFs"]){
+    const sel=document.getElementById(id); if(!sel)continue;
+    sel.innerHTML=`<option value=""${COMPARE_MODEL===""?" selected":""}>${L("关闭对比","Compare off")}</option>`+
+      MODELS.map(m=>`<option value="${m.api}"${m.api===COMPARE_MODEL?" selected":""}>${m.short} · ${L(m.zh,m.en)}</option>`).join("");
+  }
+}
+function updateFsTitle(){
+  const e=document.getElementById("fsTitle"); if(!e)return;
+  const base=(LASTLABEL==="@myloc")?L("当前位置","Current location"):(LASTLABEL||L("探空","Sounding"));
+  e.textContent=base+" · "+modelShort()+(COMPARE_MODEL?` vs ${modelShortOf(COMPARE_MODEL)||""}`:"");
 }
 async function refreshCompare(){
   if(!COMPARE_MODEL||!LATLON){ DATA2=null; if(DATA)showHour(CUR_I); return; }
@@ -822,6 +830,7 @@ function applyStaticLang(){
   T("thHint", L("每列＝一小时，越蓝＝越接近饱和（成云）。蓝色虚线＝0°C层。点击任一列跳到该小时。","Each column = one hour; bluer = closer to saturation (cloud). Dashed cyan = 0°C level. Tap a column to jump to that hour."));
   populateCmpSel();
   if(typeof ENS!=="undefined"&&ENS&&!ENS.error) renderEnsemble();
+  if(typeof DATA!=="undefined"&&DATA&&(A_NOW||LAST_A)) renderFarmerSummary();
   (function(){
     const lbl={sb:L("地面 SB","Surface SB"),ml:L("混合层 ML","Mixed ML"),mu:L("最不稳定 MU","Most-unstable MU")};
     document.querySelectorAll("#parcelSeg button, #parcelSegFs button").forEach(b=>b.textContent=lbl[b.dataset.parcel]);
@@ -1017,6 +1026,7 @@ const ENS_MAP={ // deterministic model -> matching ensemble suite (ECMWF fallbac
   icon_seamless:"icon_seamless", gem_global:"gem_global",
   jma_gsm:"ecmwf_ifs025", cma_grapes_global:"ecmwf_ifs025",
 };
+function ensConfWord(){ return ENS?({hi:L("高一致","high agreement"),md:L("中等一致","moderate agreement"),lo:L("分歧大","low agreement")})[ENS.confCls]||"":""; }
 function pctl(sorted,f){ const n=sorted.length; if(!n)return null;
   const idx=f*(n-1), lo=Math.floor(idx), hi=Math.ceil(idx);
   return sorted[lo]+(sorted[hi]-sorted[lo])*(idx-lo); }
@@ -1070,9 +1080,9 @@ function renderEnsemble(){
   const short=ENS_SHORT[ENS.model]||ENS.model;
   if(cap)cap.innerHTML=L(
     `<b>${short}</b> 集合 · ${ENS.nMembers} 成员 — 阴影＝成员的10–90%范围，深带＝25–75%，实线＝中位数`+
-    `<span class="ens-conf ${ENS.confCls}">${ENS.confWord}</span>`,
+    `<span class="ens-conf ${ENS.confCls}">${ensConfWord()}</span>`,
     `<b>${short}</b> ensemble · ${ENS.nMembers} members — shade = 10–90% of members, dark band = 25–75%, line = median`+
-    `<span class="ens-conf ${ENS.confCls}">${ENS.confWord}</span>`);
+    `<span class="ens-conf ${ENS.confCls}">${ensConfWord()}</span>`);
   const X0e=34,X1e=352,Y0e=8,Y1e=136;
   const n=HR_END-HR_START+1, xOf=i=>X0e+(i-HR_START)/(n-1)*(X1e-X0e);
   let vmax=2; for(let i=HR_START;i<=HR_END;i++){ if(st[i])vmax=Math.max(vmax,st[i].p90); }
@@ -1118,9 +1128,10 @@ function updateEnsHour(i){
     : "";
 }
 /* ---- farmer's bottom line: one plain-language conclusion after all the instruments ---- */
-let RISK_LEVELS={};
+let RISK_LEVELS={}, A_NOW=null;
 function renderFarmerSummary(){
-  const el=document.getElementById("fsum"); if(!el||!DATA||!LAST_A)return;
+  const A0=(A_NOW||LAST_A);
+  const el=document.getElementById("fsum"); if(!el||!DATA||!A0)return;
   const h=DATA.hourly;
   // worst risk ahead + when it starts (from the visible day)
   let worst=0, firstHi=null;
@@ -1130,7 +1141,7 @@ function renderFarmerSummary(){
     if(firstHi===null&&lv>=2)firstHi=i;
   }
   const at=(i)=>fmtHour(h.time[i]);
-  const cls=classifyParcels(LAST_A);
+  const cls=classifyParcels(A0);
   // sentence 1: what kind of day + when
   const what={
     hidden:  L(`地面看似平静，但上层已蓄能${firstHi!=null?` — 约 ${at(firstHi)} 后风暴风险明显升高`:""}。别被早上的好天骗了。`,
@@ -1538,10 +1549,13 @@ function draw(P,A,svgEl){
 
   // wind barbs on right
   const bx=X1+18;
+  let lastBarbY=-1e9;
   prof.forEach(l=>{
     if(l.ws==null)return;
     // keep barbs inside the plot; nudge the surface barb (at the very bottom edge) up a touch
     const y=Math.min(Y1-10, Math.max(Y0+10, yOf(l.p)));
+    if(Math.abs(y-lastBarbY)<13) return;   // anti-collision at dense low levels
+    lastBarbY=y;
     windBarb(g0,bx,y,l.ws,l.wd);
   });
 
@@ -2027,7 +2041,7 @@ function render(P,A,fc){
       })()} ${pill(lbl,col)}</div>
      <p>${txt2} ${A.cin<-50?L(`盖状逆温（CIN ${Math.round(A.cin)} J/kg）正在压制风暴 — 需先被侵蚀。`,`A capping inversion (${Math.round(A.cin)} J/kg CIN) is currently suppressing storms — it must erode first.`):""}</p>
      <p style="margin-top:8px">☁️ ${cloudWord(P.cloud)}${L(`（云量${P.cloud!=null?Math.round(P.cloud):"—"}%）`,` (${P.cloud!=null?Math.round(P.cloud):"—"}% sky)`)} · 💨 ${windLine} · 🌫️ ${fogLbl}${L("。",". ")}${fogTxt}</p>`
-     +((typeof ENS!=="undefined"&&ENS&&ENS.stats)?`<p class="ens-inline"><span class="ens-conf ${ENS.confCls}">${L("集合","ensemble")} ${ENS.confWord}</span>${ENS.confCls==="lo"?L(" — 成员分歧大，一切计划留余量。"," — members disagree; leave margin in every plan."):ENS.confCls==="hi"?L(" — 成员高度一致，可按此计划。"," — members agree; plan on it."):""}</p>`:"");
+     +((typeof ENS!=="undefined"&&ENS&&ENS.stats)?`<p class="ens-inline"><span class="ens-conf ${ENS.confCls}">${L("集合","ensemble")} ${ensConfWord()}</span>${ENS.confCls==="lo"?L(" — 成员分歧大，一切计划留余量。"," — members disagree; leave margin in every plan."):ENS.confCls==="hi"?L(" — 成员高度一致，可按此计划。"," — members agree; plan on it."):""}</p>`:"");
 
   const fmt=(v,d=0)=>v==null?"—":(typeof v==="number"?v.toFixed(d):v);
   const sections=[
@@ -2301,6 +2315,7 @@ function buildHourStrip(){
     for(let i=start;i<start+24 && i<h.time.length;i++){
       let lvl=0;
       try{ const P=buildProfile(DATA,i); const A=analyze(P); lvl=stormScores(P,A).level; RISK_LEVELS[i]=lvl;
+        if(i===start)A_NOW=A;
         (A.profWind||[]).forEach(w=>{ if(w.ws!=null&&w.ws>dayMaxWs)dayMaxWs=w.ws; if(w.ht!=null&&w.ht>dayMaxHt)dayMaxHt=w.ht; });
       }catch(e){}
       const seg=document.createElement("div");
@@ -2337,6 +2352,8 @@ function buildHourStrip(){
   const wsl=document.getElementById("windSlider");
   if(wsl){ wsl.min=HR_START; wsl.max=HR_END; wsl.value=start; }
   showHour(start);
+  drawTimeHeight();          // built once per load, not per scrub
+  renderFarmerSummary();     // day-level conclusion, anchored to "now"
 }
 function showHour(i){
   CUR_I=i;
@@ -2345,7 +2362,7 @@ function showHour(i){
   LAST_P=P; LAST_A=A;
   draw(P,A);
   const fsOpen=!document.getElementById("chartFs").classList.contains("hidden");
-  if(fsOpen) draw(P,A,document.getElementById("chartBig"));
+  if(fsOpen){ draw(P,A,document.getElementById("chartBig")); updateFsTitle(); }
   render(P,A,fmtFull(DATA.hourly.time[i]));
   // keep tile strip highlight in sync
   document.querySelectorAll(".hr").forEach(e=>e.classList.toggle("on", +e.dataset.i===i));
@@ -2361,11 +2378,9 @@ function showHour(i){
   const sl=document.getElementById("fsSlider"); if(sl&&+sl.value!==i) sl.value=i;
   const lb=document.getElementById("fsSliderLabel"); if(lb) lb.innerHTML=labHtml;
   const wsl=document.getElementById("windSlider"); if(wsl&&+wsl.value!==i) wsl.value=i;
-  drawTimeHeight();
   const wlb=document.getElementById("windSliderLabel"); if(wlb) wlb.innerHTML=labHtml;
   updateThCursor(i);   // time-height panel cursor follows the hour
   renderParcelMatrix(LAST_A);
-  renderFarmerSummary();
   updateEnsHour(i);
   document.querySelectorAll("#poprow .pb").forEach(b=>b.classList.toggle("on",+b.dataset.i===i));
 }
@@ -2373,7 +2388,7 @@ let LAST_P=null, LAST_A=null;
 function openFullscreen(){
   if(!LAST_P)return;
   const fs=document.getElementById("chartFs");
-  document.getElementById("fsTitle").textContent=(LASTLABEL==="@myloc")?L("当前位置","Current location"):(LASTLABEL||L("探空","Sounding"));
+  updateFsTitle();
   fs.classList.remove("hidden");
   const sl=document.getElementById("fsSlider"); if(sl){sl.min=HR_START;sl.max=HR_END;sl.value=CUR_I;}
   showHour(CUR_I);
@@ -2387,7 +2402,7 @@ async function load(lat,lon,label){
     DATA=await getSounding(lat,lon); LATLON=[lat,lon]; LASTLABEL=label||null;
     SONDE=null; SONDE_ON=false; updateSondeUI();   // sonde overlay is per-location: reset on change
     renderLocCaption();
-    ["loc","hours","hoursLabel","riskstrip","verdict","crossTip","parcelRow","chartwrap","legendWrap","fsum","cards","ingredients","pmatrix","enswrap","hodowrap","thwrap","explain"].forEach(id=>document.getElementById(id).classList.remove("hidden"));
+    ["loc","hours","hoursLabel","riskstrip","verdict","crossTip","parcelRow","chartwrap","legendWrap","fsum","cards","ingredients","pmatrix","enswrap","hodowrap","thwrap","explain","cmprow"].forEach(id=>document.getElementById(id).classList.remove("hidden"));
     document.getElementById("err").classList.add("hidden");
     document.getElementById("reloadBtn").classList.remove("hidden");
     document.getElementById("shareBtn").classList.remove("hidden");
@@ -2446,11 +2461,16 @@ document.getElementById("infoBtn").onclick=openGuide;
 document.getElementById("langBtn").onclick=toggleLang;
 document.getElementById("sondeBtn").onclick=toggleSonde;
 (function(){const b=document.getElementById("buildTag"); if(b)b.textContent="SkewT Sounding · build "+APP_BUILD;})();
-document.getElementById("cmpSel").onchange=e=>{
-  COMPARE_MODEL=e.target.value;
+function setCompare(v){
+  COMPARE_MODEL=v;
   try{localStorage.setItem("skewt.cmp.v1",COMPARE_MODEL);}catch(err){}
+  for(const id of ["cmpSel","cmpSelFs"]){ const s2=document.getElementById(id); if(s2&&s2.value!==v)s2.value=v; }
+  updateFsTitle();
   refreshCompare();
-};
+}
+["cmpSel","cmpSelFs"].forEach(id=>{
+  const s2=document.getElementById(id); if(s2)s2.onchange=e=>setCompare(e.target.value);
+});
 function updateParcelSeg(){
   document.querySelectorAll("#parcelSeg button, #parcelSegFs button").forEach(b=>{
     b.classList.toggle("on", b.dataset.parcel===PARCEL_SEL);
@@ -2495,7 +2515,7 @@ document.getElementById("shareBtn").onclick=()=>{
      `*${vPlain}*`,
      ``,
      `降雨：${rainWordOf(rain)} · ${rain.toFixed(1)} mm/h`,
-     ...(typeof ENS!=="undefined"&&ENS&&ENS.stats&&ENS.stats[CUR_I]?[`集合：中位 ${ENS.stats[CUR_I].p50.toFixed(1)} mm · ≥5mm ${ENS.stats[CUR_I].t5}% · ${ENS.confWord}`]:[]),
+     ...(typeof ENS!=="undefined"&&ENS&&ENS.stats&&ENS.stats[CUR_I]?[`集合：中位 ${ENS.stats[CUR_I].p50.toFixed(1)} mm · ≥5mm ${ENS.stats[CUR_I].t5}% · ${ensConfWord()}`]:[]),
      `CAPE ${num(A.cape)} J/kg · CIN ${num(A.cin)} J/kg`,
      `可降水量 ${num(A.pw)} mm`,
      `${shearTxt} · 云量 ${num(P.cloud)}%`,
@@ -2508,7 +2528,7 @@ document.getElementById("shareBtn").onclick=()=>{
      `*${vPlain}*`,
      ``,
      `Rain: ${rainWordOf(rain)} · ${rain.toFixed(1)} mm/h`,
-     ...(typeof ENS!=="undefined"&&ENS&&ENS.stats&&ENS.stats[CUR_I]?[`Ensemble: median ${ENS.stats[CUR_I].p50.toFixed(1)} mm · ≥5mm ${ENS.stats[CUR_I].t5}% · ${ENS.confWord}`]:[]),
+     ...(typeof ENS!=="undefined"&&ENS&&ENS.stats&&ENS.stats[CUR_I]?[`Ensemble: median ${ENS.stats[CUR_I].p50.toFixed(1)} mm · ≥5mm ${ENS.stats[CUR_I].t5}% · ${ensConfWord()}`]:[]),
      `CAPE ${num(A.cape)} J/kg · CIN ${num(A.cin)} J/kg`,
      `PW ${num(A.pw)} mm`,
      `${shearTxt} · cloud ${num(P.cloud)}%`,
