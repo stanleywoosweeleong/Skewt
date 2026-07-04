@@ -169,8 +169,8 @@ body.lang-zh .crosstip-inline{min-height:146px}
   #hodowrap{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;row-gap:2px;align-items:start}
   #hodoTitle{grid-column:1;grid-row:1}
   #wpTitle{grid-column:2;grid-row:1;margin-top:0}
-  #hodowrap #hodo{grid-column:1;grid-row:2;max-width:400px;justify-self:center}
-  #hodowrap #windprof{grid-column:2;grid-row:2;max-width:400px;justify-self:center}
+  #hodowrap .svg-ratio-hodo{grid-column:1;grid-row:2;max-width:400px;justify-self:center;width:100%}
+  #hodowrap .svg-ratio-wp{grid-column:2;grid-row:2;max-width:400px;justify-self:center;width:100%}
   #hodowrap .windslider-row{grid-column:1/-1;grid-row:3;max-width:640px;justify-self:center;width:100%}
   #hodowrap .notebox{grid-column:1/-1;grid-row:4}
 }
@@ -240,8 +240,14 @@ svg{width:100%;height:auto;display:block;touch-action:manipulation}
 /* pin the sounding to its viewBox aspect ratio and clip any per-hour content that strays
    outside the box (stray labels/barbs), so the chart height never shifts while scrubbing. */
 #thwrap svg{aspect-ratio:360/250;height:auto}
-#hodo{width:100%;aspect-ratio:1/1;height:auto}
-#windprof{width:100%;aspect-ratio:300/340;height:auto}
+#hodo{display:block;width:100%;height:100%}
+#windprof{display:block;width:100%;height:100%}
+/* ratio containers reserve height from their own width (works empty; Safari-proof),
+   so clearing the SVG's contents each hour never collapses/reflows the box → no scrub jump */
+.svg-ratio{position:relative;width:100%;max-width:340px;margin:0 auto}
+.svg-ratio>svg{position:absolute;inset:0;max-width:100%}
+.svg-ratio-hodo{padding-bottom:100%}       /* 300:300 = 1:1 */
+.svg-ratio-wp{padding-bottom:113.33%}      /* 300:340 → height/width = 340/300 */
 #chart{aspect-ratio:540/560;height:auto;overflow:hidden}
 #chartBig{aspect-ratio:540/560;height:auto}
 .chartwrap{contain:layout}
@@ -266,10 +272,9 @@ body.lang-zh .csec-head{font-size:13px;letter-spacing:.05em}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
 .card .k{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
 #hodowrap{padding:6px 16px 4px}
-#hodowrap svg{margin-bottom:0}
 #hodowrap #wpTitle{margin-top:4px}
 #hodowrap .windslider-row{margin-top:2px}
-#hodowrap svg{max-width:340px;margin:0 auto;display:block}
+#hodowrap .svg-ratio{margin-bottom:0}
 .parcelrow{display:flex;align-items:center;gap:6px 10px;margin:2px 16px 6px;flex-wrap:wrap}
 .parcel-lbl{flex:0 0 100%;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
@@ -331,6 +336,14 @@ body.lang-zh .crosstip .ttinterp{font-size:12.5px}
 .rowmodel-pophead .xbtn{position:static;flex:0 0 auto}
 .rowmodel-popsub{font-size:11.5px;color:var(--faint);margin-bottom:10px}
 #rowModelTiles{grid-template-columns:repeat(2,1fr)}
+/* share preview modal */
+.shareprev-pop{max-width:460px}
+.shareprev-body{white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.55;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:4px 0 12px;max-height:52vh;overflow-y:auto}
+body.lang-zh .shareprev-body{font-size:14px}
+.shareprev-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shareprev-actions button{padding:12px;font-size:14px;font-weight:800;border-radius:12px;-webkit-tap-highlight-color:transparent}
+.sp-cancel{background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+.sp-send{background:var(--accent);border:1px solid var(--accent);color:#fff}
 .sonderow{display:flex;align-items:center;gap:10px;margin:8px 16px 0}
 .sonderow button{flex:0 0 auto;padding:6px 12px;font-size:12.5px;font-weight:700;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--dim)}
 .sonderow button.on{color:var(--accent);border-color:var(--accent)}
@@ -476,6 +489,18 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
   </div>
 </div>
 
+<!-- share preview: shows the exact WhatsApp message before sending -->
+<div class="rowmodel-ov hidden" id="sharePrevOv">
+  <div class="rowmodel-pop shareprev-pop">
+    <div class="rowmodel-pophead"><span id="sharePrevTitle"></span><button type="button" class="xbtn" id="sharePrevClose">✕</button></div>
+    <div class="shareprev-body" id="sharePrevBody"></div>
+    <div class="shareprev-actions">
+      <button type="button" class="sp-cancel" id="sharePrevCancel"></button>
+      <button type="button" class="sp-send" id="sharePrevSend"></button>
+    </div>
+  </div>
+</div>
+
 <div class="verdict hidden" id="verdict"></div>
 
 <div class="fsum hidden" id="fsum"></div>
@@ -545,9 +570,9 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
 </div>
 <div id="hodowrap" class="hidden">
   <div class="cardsect" id="hodoTitle"></div>
-  <svg id="hodo" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet"></svg>
+  <div class="svg-ratio svg-ratio-hodo"><svg id="hodo" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet"></svg></div>
   <div class="cardsect" id="wpTitle"></div>
-  <svg id="windprof" viewBox="0 0 300 340" preserveAspectRatio="xMidYMid meet"></svg>
+  <div class="svg-ratio svg-ratio-wp"><svg id="windprof" viewBox="0 0 300 340" preserveAspectRatio="xMidYMid meet"></svg></div>
   <div class="windslider-row">
     <div class="fs-slabel" id="windSliderLabel"></div>
     <input type="range" id="windSlider" min="0" max="23" value="0" step="1"/>
@@ -601,7 +626,7 @@ const MODELS=[
 /* ================= radiosonde overlay (observed balloon vs forecast) =================
    SONDE_WORKER: paste your deployed Cloudflare Worker URL here (see sonde-worker.js).
    Leave empty to disable — the button will show a setup hint instead of failing silently. */
-const APP_BUILD="v80";   // bump together with sw.js CACHE_VERSION on every deploy
+const APP_BUILD="v84";   // bump together with sw.js CACHE_VERSION on every deploy
 const SONDE_WORKER="https://sonde-worker.standphoto.workers.dev";
 const SONDE_STATIONS=[
   {id:"48601",name:"Penang 槟城",lat:5.30,lon:100.27},
@@ -1027,6 +1052,9 @@ function applyStaticLang(){
   updateModelNote();
   if(typeof renderList==="function") renderList();   // row dropdowns follow the language toggle
   const sb=document.getElementById("shareBtn"); if(sb)sb.title=L("分享到 WhatsApp","Share to WhatsApp");
+  T("sharePrevTitle", L("预览 · WhatsApp 讯息","Preview · WhatsApp message"));
+  T("sharePrevCancel", L("取消","Cancel"));
+  T("sharePrevSend", L("发送到 WhatsApp","Send to WhatsApp"));
   updateSondeUI();
 }
 /* ================= end i18n core ================= */
@@ -2879,6 +2907,18 @@ document.getElementById("restoreSeeds").onclick=()=>{
 document.getElementById("overlay").onclick=(e)=>{if(e.target.id==="overlay")closeSheet();};
 document.getElementById("rowModelClose").onclick=()=>document.getElementById("rowModelOv").classList.add("hidden");
 document.getElementById("rowModelOv").onclick=(e)=>{if(e.target.id==="rowModelOv")document.getElementById("rowModelOv").classList.add("hidden");};
+(function(){
+  const ov=document.getElementById("sharePrevOv"); if(!ov)return;
+  const hide=()=>ov.classList.add("hidden");
+  document.getElementById("sharePrevClose").onclick=hide;
+  document.getElementById("sharePrevCancel").onclick=hide;
+  ov.onclick=(e)=>{ if(e.target.id==="sharePrevOv") hide(); };
+  document.getElementById("sharePrevSend").onclick=()=>{
+    const t=ov.dataset.text||"";
+    hide();
+    window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank");
+  };
+})();
 document.getElementById("locFilter").oninput=(e)=>{FILTER=e.target.value;renderList();};
 /* master list collapse/expand */
 function toggleList(force){
@@ -2933,7 +2973,7 @@ document.getElementById("shareBtn").onclick=()=>{
   // plain text only: emoji render as � on some receiving devices (WhatsApp Web/Windows),
   // and broadcasts get forwarded everywhere — reliability beats decoration
   const vPlain=v.replace(/^[^\p{L}\p{N}*]+/u,"");   // strip any leading emoji from the verdict
-  const vParts=vPlain.replace(/。$/,"").split(/\s—\s/);   // bold the short claim; details go on their own line
+  const vParts=vPlain.replace(/。$/,"").split(/\s—\s/);   // short claim first; details go on their own line
   // farmer's bottom line + risk window: the parts a village broadcast actually needs
   const FS=(typeof farmerSummaryParts==="function")?farmerSummaryParts():null;
   const strip=(t)=>String(t||"").replace(/^[^\p{L}\p{N}*≥]+/u,"").trim();   // keep ≥ (used in "≥5mm")
@@ -2943,68 +2983,93 @@ document.getElementById("shareBtn").onclick=()=>{
   let riskLine=null;
   if(FS){
     if(FS.riskFrom==null) riskLine=L("今日无明显风暴时段","No clear storm window today");
-    else if(FS.riskTo-FS.riskFrom>=10) riskLine=L(`风暴风险：约 ${FS.at(FS.riskFrom)} 起 · 持续多时`,`Storm risk: from ~${FS.at(FS.riskFrom)} · long-lasting`);
+    else if(FS.riskTo-FS.riskFrom>=10) riskLine=L(`风暴风险：约 ${FS.at(FS.riskFrom)} 起，持续多时`,`Storm risk: from ~${FS.at(FS.riskFrom)}, long-lasting`);
     else riskLine=L(`风暴风险：约 ${FS.at(FS.riskFrom)}–${FS.at(FS.riskTo)}`,`Storm risk: ~${FS.at(FS.riskFrom)}–${FS.at(FS.riskTo)}`);
   }
-  // work lights, short labels; "–" for the dimmed seed light (a bare "·" read as a typo)
-  const lightsLine = FS&&FS.lights ? FS.lights.map(([c,m,t])=>
-      `${c===""?"–":m} ${t.split("/")[0]}`).join(" · ") : null;
+  // farmer block: short claims only — no work lights (farmers judge from the forecast),
+  // no "dry until" window line (the per-hour rain list below is the single source of truth).
   const fsBlock = FS ? [
-      L(`【农户小结】`,`*FARMER'S BOTTOM LINE*`),
       ...sentences(FS.what).map(x=>`· ${x}`),
-      ...(FS.ensLine?sentences(FS.ensLine).map(x=>`· ${x}`):[]),
-      ...(FS.windowLine?sentences(FS.windowLine).map(x=>`· ${x}`):[]),
+      ...(FS.ensLine?sentences(FS.ensLine).slice(0,1).map(x=>`· ${x}`):[]),
       ...(riskLine?[`· ${riskLine}`]:[]),
-      ...(lightsLine?[lightsLine]:[]),
       ``] : [];
-  // rain timing: WHEN it rains and how hard — the current hour alone misleads
+  // rain timing: list EACH rainy hour with its forecast mm — one source of truth (actual precip),
+  // so nothing contradicts. Farmers read the hours and judge for themselves.
   const pr=(h.precipitation||[]);
-  let rFirst=null,rPeak=null;
-  for(let i=HR_START;i<=HR_END;i++){
-    const x=+pr[i]||0;
-    if(x>=0.3){ if(rFirst==null)rFirst=i; if(rPeak==null||x>(+pr[rPeak]||0))rPeak=i; }
-  }
   const atH=(i)=>fmtHour(h.time[i]);
-  const rainLines = rFirst==null
-    ? [L("雨量：全天基本无雨（此模式）","Rain: essentially none today (this model)")]
-    : [L(`下雨时间：约 ${atH(rFirst)} 起`,`Rain starts: ~${atH(rFirst)}`),
-       L(`雨最大：${atH(rPeak)} 前后 · ${(+pr[rPeak]).toFixed(1)} mm/h`,`Heaviest: ~${atH(rPeak)} · ${(+pr[rPeak]).toFixed(1)} mm/h`)];
+  const dayOf=(i)=>String(h.time[i]).slice(0,10);   // YYYY-MM-DD of an hour index
+  const rainHours=[];
+  for(let i=HR_START;i<=HR_END;i++){ const x=+pr[i]||0; if(x>=0.2) rainHours.push([i,x]); }
+  let rainLines;
+  if(!rainHours.length){
+    rainLines=[L("未来24小时预报无雨","No rain forecast next 24h")];
+  } else {
+    const cap=8;   // keep the list short — WhatsApp readers dislike long scrolls
+    const shown=rainHours.slice(0,cap);
+    const startDay=dayOf(HR_START);
+    rainLines=[L("逐时雨量（预报）：","Rain by hour (forecast):")];
+    let dayShown=startDay, taggedNext=false;
+    for(const [i,x] of shown){
+      // when the list first rolls into a later day, drop a divider so 00:00 isn't misread as today
+      if(!taggedNext && dayOf(i)!==startDay){
+        rainLines.push(L("— 明天 —","— Tomorrow —"));
+        taggedNext=true;
+      }
+      rainLines.push(`${atH(i)} · ${x.toFixed(1)} mm`);
+    }
+    if(rainHours.length>cap) rainLines.push(L(`…及另 ${rainHours.length-cap} 小时`,`…and ${rainHours.length-cap} more h`));
+  }
   // plain-language day summary instead of raw CAPE/CIN/PW numbers
-  const capeW=(c)=>c==null?null:c>=2500?L("极强","very strong"):c>=1500?L("很强","strong"):c>=800?L("中等","moderate"):c>=300?L("偏弱","weak"):L("很弱","very weak");
-  const pwW=(w)=>w==null?null:w>=55?L("非常充足","very plentiful"):w>=45?L("充足","plentiful"):w>=35?L("一般","moderate"):L("偏干","on the dry side");
-  const shW=(x)=>x==null?null:x>=40?L("强（易组织成片）","strong (organised storms)"):x>=25?L("中等","moderate"):L("弱（短时阵性）","weak (brief showers)");
+  const capeW=(c)=>c==null?null:c>=2500?L("极强","v.strong"):c>=1500?L("很强","strong"):c>=800?L("中等","moderate"):c>=300?L("偏弱","weak"):L("很弱","v.weak");
+  const pwW=(w)=>w==null?null:w>=55?L("很足","v.high"):w>=45?L("充足","high"):w>=35?L("一般","moderate"):L("偏干","low");
+  const shW=(x)=>x==null?null:x>=40?L("强","strong"):x>=25?L("中等","moderate"):L("弱","weak");
   const dayBits=[
     capeW(A.capeMU!=null?A.capeMU:A.cape)&&L(`能量${capeW(A.capeMU!=null?A.capeMU:A.cape)}`,`fuel ${capeW(A.capeMU!=null?A.capeMU:A.cape)}`),
     pwW(A.pw)&&L(`水汽${pwW(A.pw)}`,`moisture ${pwW(A.pw)}`),
     A.shear!=null&&L(`风切${shW(A.shear)}`,`shear ${shW(A.shear)}`)
   ].filter(Boolean);
+  // time-of-day greeting from the device's current local hour (the broadcaster's "now")
+  const greet=(()=>{ const hr=new Date().getHours();
+    if(hr>=5&&hr<12)  return L("早安","Good morning");
+    if(hr>=12&&hr<18) return L("午安","Good afternoon");
+    if(hr>=18&&hr<22) return L("晚上好","Good evening");
+    return L("夜深了","Good night"); })();
   const lines=L(
-    [`*SkewT 探空*`,
+    [`${greet} · SkewT 探空`,
      `${label}`,
      `${fmtFull(h.time[CUR_I])} · ${tz}`,
      ``,
-     `*${vParts[0]}*`,
+     `${vParts[0]}`,
      ...vParts.slice(1),
      ``,
      ...fsBlock,
      ...rainLines,
+     ``,
      ...(dayBits.length?[`今天：${dayBits.join(" · ")}`]:[]),
-     ``,
      `模式：${modelShort()} · Open-Meteo`],
-    [`*SkewT Sounding*`,
+    [`${greet} · SkewT Sounding`,
      `${label}`,
      `${fmtFull(h.time[CUR_I])} · ${tz}`,
      ``,
-     `*${vParts[0]}*`,
+     `${vParts[0]}`,
      ...vParts.slice(1),
      ``,
      ...fsBlock,
      ...rainLines,
-     ...(dayBits.length?[`Today: ${dayBits.join(" · ")}`]:[]),
      ``,
+     ...(dayBits.length?[`Today: ${dayBits.join(" · ")}`]:[]),
      `Model: ${modelShort()} · Open-Meteo`]).join("\n");
-  window.open("https://wa.me/?text="+encodeURIComponent(lines),"_blank");
+  showSharePreview(lines);
 };
+// preview the exact WhatsApp message; user reads it, then Send (opens WhatsApp) or Cancel
+function showSharePreview(text){
+  const ov=document.getElementById("sharePrevOv");
+  const body=document.getElementById("sharePrevBody");
+  if(!ov||!body){ window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank"); return; }
+  body.textContent=text;
+  ov.dataset.text=text;
+  ov.classList.remove("hidden");
+}
 document.getElementById("guideClose").onclick=closeGuide;
 document.getElementById("guideOverlay").onclick=(e)=>{if(e.target.id==="guideOverlay")closeGuide();};
 /* collapsible chart legend, remembered across launches */
