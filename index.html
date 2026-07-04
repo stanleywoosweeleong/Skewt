@@ -154,7 +154,8 @@ button.compact{padding:9px 12px;font-size:15px;line-height:1}
 .chartwrap{padding:6px 10px;position:relative}
 .crosstip{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(18,24,40,.95);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--ink);line-height:1.5;pointer-events:none;opacity:1;transition:opacity .12s;backdrop-filter:blur(3px);white-space:nowrap;z-index:5;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 .crosstip-fs{position:static;transform:none;margin:2px 16px 8px;left:auto;top:auto;white-space:normal;box-shadow:none;background:var(--panel2)}
-.crosstip-inline{position:static;transform:none;margin:4px 12px 6px;left:auto;top:auto;white-space:normal;box-shadow:none;background:var(--panel2);min-height:176px}
+.crosstip-inline{position:static;transform:none;margin:4px 12px 6px;left:auto;top:auto;white-space:normal;box-shadow:none;background:var(--panel2);min-height:142px}
+body.lang-zh .crosstip-inline{min-height:146px}
 .crosstip b{font-size:13px}
 .crosstip .ttrow{display:flex;align-items:center;gap:5px;margin-top:3px;color:var(--dim)}
 .crosstip .ttrow i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-left:2px}
@@ -318,7 +319,17 @@ body.lang-zh #pmatrix .pm-d{font-size:12.5px;line-height:1.55}
 .notebox{margin:6px 16px 4px}
 .crosstip .ttinterp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:5px;padding-top:5px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--dim);line-height:1.45;min-height:calc(2 * 1.45em + 5px)}
 body.lang-zh .crosstip .ttinterp{font-size:12.5px}
-.frow .rowmodel{flex:0 0 auto;max-width:96px;margin-left:8px;padding:4px 6px;font-size:11px;font-weight:700;color:var(--accent);background:transparent;border:1px solid var(--line);border-radius:8px;-webkit-appearance:none;appearance:none;text-align:center;text-align-last:center}
+.frow .rowmodel{flex:0 0 auto;margin-left:8px;padding:7px 11px;font-size:12px;font-weight:700;color:var(--dim);background:transparent;border:1px solid var(--line);border-radius:8px;display:inline-flex;align-items:center;gap:5px;-webkit-tap-highlight-color:transparent;cursor:pointer}
+.frow .rowmodel.set{color:var(--accent);border-color:var(--accent)}
+.frow .rowmodel .rm-car{font-size:9px;opacity:.7}
+/* per-row model picker popup */
+.rowmodel-ov{position:fixed;inset:0;background:rgba(4,7,15,.72);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+.rowmodel-pop{width:100%;max-width:420px;max-height:82vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:slideup .18s ease}
+.rowmodel-pophead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px}
+.rowmodel-pophead span{font-size:16px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rowmodel-pophead .xbtn{position:static;flex:0 0 auto}
+.rowmodel-popsub{font-size:11.5px;color:var(--faint);margin-bottom:10px}
+#rowModelTiles{grid-template-columns:repeat(2,1fr)}
 .sonderow{display:flex;align-items:center;gap:10px;margin:8px 16px 0}
 .sonderow button{flex:0 0 auto;padding:6px 12px;font-size:12.5px;font-weight:700;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--dim)}
 .sonderow button.on{color:var(--accent);border-color:var(--accent)}
@@ -328,6 +339,7 @@ body.lang-zh .crosstip .ttinterp{font-size:12.5px}
 .modelhead .csec-car{color:var(--accent);font-size:11px;transition:transform .15s}
 .modelhead.collapsed .csec-car{transform:rotate(-90deg)}
 .mh-label{color:var(--faint);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+body.lang-zh .mh-label{font-size:13px;letter-spacing:.02em}
 .mh-cur{flex:1;text-align:right;color:var(--accent);font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* expanded sheet: near-full-bleed inside the app frame (100vw breakout overflowed on iOS) */
 .modeltiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 8px 8px;padding:0;box-sizing:border-box}
@@ -454,7 +466,15 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
   </div>
 </div>
 
-<div class="verdict hidden" id="verdict"></div>
+<!-- popup: per-row model picker (big tiles, fat-finger friendly) -->
+<div class="rowmodel-ov hidden" id="rowModelOv">
+  <div class="rowmodel-pop">
+    <div class="rowmodel-pophead"><span id="rowModelTitle"></span><button type="button" class="xbtn" id="rowModelClose">✕</button></div>
+    <div class="rowmodel-popsub" id="rowModelSub"></div>
+    <div class="modeltiles" id="rowModelTiles"></div>
+  </div>
+</div>
+
 <div class="fsum hidden" id="fsum"></div>
 
 <div id="crossTip" class="crosstip crosstip-inline hidden"></div>
@@ -578,7 +598,7 @@ const MODELS=[
 /* ================= radiosonde overlay (observed balloon vs forecast) =================
    SONDE_WORKER: paste your deployed Cloudflare Worker URL here (see sonde-worker.js).
    Leave empty to disable — the button will show a setup hint instead of failing silently. */
-const APP_BUILD="v70";   // bump together with sw.js CACHE_VERSION on every deploy
+const APP_BUILD="v77";   // bump together with sw.js CACHE_VERSION on every deploy
 const SONDE_WORKER="https://sonde-worker.standphoto.workers.dev";
 const SONDE_STATIONS=[
   {id:"48601",name:"Penang 槟城",lat:5.30,lon:100.27},
@@ -907,6 +927,9 @@ function buildGuide(){
   +D(L("风切变与风矢端图","Wind shear & the hodograph"),
     `<b>风切变</b>是地面到风暴层（0–6公里）之间风的变化。<b>风矢端图</b>把各高度的风画成点（东西向为横轴、南北向为纵轴）并自下而上连线。短而直=弱切变、脉冲风暴。长而弯=强切变伴转向 — 有组织、可能强烈风暴的指纹。点的颜色代表高度：地面绿色，向上经琥珀色到风暴顶红色。`,
     `<b>Wind shear</b> is the change in wind from ground to storm level (0–6 km). The <b>hodograph</b> plots each level's wind as a dot (east–west horizontal, north–south vertical) joined from the ground up. Short, straight = weak shear, pulse storms. Long, curved = strong shear with turning — the fingerprint of organized, potentially severe storms. Dot colours mark height: green near the surface up through amber to red at storm top.`)
+  +D(L("风暴组织性 — 西海岸飑线/“类气旋”事件","Storm organization — west-coast squalls & \"cyclone-like\" events"),
+    `近年西马来西亚西海岸越来越常出现接近“迷你气旋”的强飑线（本质多为强苏门答腊飑/中尺度对流系统）。它们能否组织化、持久并横扫整个县市，取决于<b>切变</b>与<b>低层旋转</b>如何与燃料配合。以下几项正是为此而设：<br><br>• <b>有效入流层</b> — 风暴真正吸入空气的高度带（该层气块既有浮力、盖子又不太强）。它是切变与螺旋度真正“生效”的层；没有它，再强的切变也无处施力。<br>• <b>有效切变 EBWD</b> — 跨越这个真正燃料层的风速差。判断飑线能否组织并横扫的<b>最佳单一指标</b>：&lt;10 m/s短命单体；10–20多单体/短飑线；20–27有组织飑线；&gt;27强飑线/弓形回波风险（易致大风扫落果实、折枝）。<br>• <b>螺旋度 SRH（0–1 / 0–3 km）</b> — 低层风的旋转量。数值越大，风暴越易获得旋转与持久性。正值＝风向随高度顺时针转（北半球有利有组织风暴）。<br>• <b>风暴移动（Bunkers 右移体）</b> — 估计风暴移动的方向与速度，用于判断它多快扫过果园、你有多少预警时间。风矢端图上的橙色<b>“风暴”</b>点即为此。<br><br><b>诚实说明：</b>这些参数源自 SHARPpy／NOAA SPC 的成熟方法，最初为美国龙卷环境调校。在热带，绝对阈值仅供参考、不能照搬 — 但<b>趋势与相对比较</b>很有价值：EBWD 与 SRH 明显偏高的日子，就是更可能出现有组织、破坏性飑线的日子。刻意不含美国龙卷专用的合成指数（STP/SHIP/超级单体合成参数），因为它们在马来西亚意义不大。`,
+    `In recent years the west coast of Peninsular Malaysia has increasingly seen near-"mini-cyclone" squall lines (really intense Sumatra squalls / mesoscale convective systems). Whether they organize, last, and sweep across a whole district depends on how <b>shear</b> and <b>low-level rotation</b> combine with the fuel. These parameters are built for exactly that:<br><br>• <b>Effective inflow layer</b> — the height band a storm actually inhales from (parcels there are buoyant and not too capped). It's the layer where shear and helicity actually act; without it, even strong shear has nothing to grip.<br>• <b>Effective shear (EBWD)</b> — the wind difference across that real fuel layer. The <b>single best gauge</b> of whether a squall line organizes and sweeps through: &lt;10 m/s short-lived cells; 10–20 multicell/short lines; 20–27 organized squall line; &gt;27 intense squall / bow-echo risk (the damaging wind that strips fruit and snaps branches).<br>• <b>Helicity SRH (0–1 / 0–3 km)</b> — the low-level spin available to a storm. Larger = more able to rotate and persist. Positive = wind turning clockwise with height (favours organized storms in the N. hemisphere).<br>• <b>Storm motion (Bunkers right-mover)</b> — the estimated direction and speed a storm travels, so you know how fast it crosses the orchard and how much warning you have. It's the orange <b>"storm"</b> dot on the hodograph.<br><br><b>Honest note:</b> these come from the established SHARPpy / NOAA SPC methods, originally tuned for US tornado environments. In the tropics the absolute thresholds are a guide, not gospel — but the <b>trend and relative comparison</b> are genuinely useful: days with clearly higher EBWD and SRH are the days more likely to produce an organized, damaging squall. US tornado-specific composites (STP/SHIP/supercell) are deliberately left out — they carry little meaning in Malaysia.`)
   +D(L("急流 — 如何在高空识别","The jet stream — spotting it aloft"),
     `<b>急流</b>是高空（通常9–12公里，约300–200 hPa）一条狭窄的强风带，风速可达120–250+ km/h。它标记强温度梯度并引导天气系统 — 风暴沿其移动。在<b>风速廓线</b>上，留意曲线在高处向右鼓出；虚线标出急流强度（≥120 km/h ≈ 65节）。只有峰值既快（≥120）又高（≥8公里）才显示红色“急流”标记；强而偏低的峰值标为“风速极值” — 增添切变的中层强风，但不是急流。在<b>风羽</b>上，急流表现为顶部密集的羽毛（三角旗）。<b>热带提示：</b>赤道附近（如马来西亚）中纬度急流很少经过头顶，真正的急流标记并不常见 — 但本应用可全球使用，走到哪里都能识别。`,
     `The <b>jet stream</b> is a fast, narrow ribbon of wind high up (usually 9–12 km, near 300–200 hPa) where speeds top 120–250+ km/h. It marks strong temperature boundaries and steers weather systems — storms track along it. On the <b>wind-speed profile</b>, watch for the curve bulging far to the right high up; a dashed line marks jet strength (≥120 km/h ≈ 65 kt). A red "JET" marker appears only when the peak is both fast (≥120 km/h) and genuinely high (≥8 km). A strong-but-lower peak is labelled a "wind max" instead — mid-level winds that add shear but aren't the jet stream. On the <b>wind barbs</b>, a jet shows as heavily-feathered barbs (pennants) near the top. <b>Tropical note:</b> near the equator (like Malaysia) the mid-latitude jets rarely pass overhead, so a true "JET" marker is uncommon — but this app travels worldwide, so it's ready wherever you are.`)
@@ -957,8 +980,8 @@ function applyStaticLang(){
   T("hodoTitle", L("风矢端图 · 风随高度转向","Hodograph · wind turning with height"));
   T("hodoNoteSum", L("如何解读这两张图？","How to read these two charts"));
   H("hodoNote", L("<b>风矢端图：</b>","<b>Hodograph:</b> ")+L(
-    "每个圆点代表某一高度的风；连线显示风随高度如何转向。线长且弯曲=强切变和转向，是有组织、旋转风暴的形态；线短且直=弱切变，只有短暂的阵性降雨。淡色线为过去几小时 — 拖动时间滑块可观察风的变化趋势。",
-    "Each dot is the wind at a height; the line traces how wind turns as you go up. A long, curved line means strong shear and turning — the setup for rotating, organized storms. A short, straight line means weak shear and brief pulse showers. Faint lines show the last few hours, so as you slide the time you can watch the wind trend shift."));
+    "每个圆点代表某一高度的风；连线显示风随高度如何转向。线长且弯曲=强切变和转向，是有组织、旋转风暴的形态；线短且直=弱切变，只有短暂的阵性降雨。淡色线为过去几小时 — 拖动时间滑块可观察风的变化趋势。橙色圆点<b>“风暴”</b>是估计的风暴移动方向与速度（Bunkers 右移体）：从地面点到该点的距离越长、弯曲越多，低层<b>螺旋度</b>越大 — 越利于风暴组织化与持久。",
+    "Each dot is the wind at a height; the line traces how wind turns as you go up. A long, curved line means strong shear and turning — the setup for rotating, organized storms. A short, straight line means weak shear and brief pulse showers. Faint lines show the last few hours, so as you slide the time you can watch the wind trend shift. The orange <b>\"storm\"</b> dot is the estimated storm motion (Bunkers right-mover): the longer and more curved the path from the surface dot to it, the more low-level <b>helicity</b> — and the more a storm can organize and last."));
   T("wpTitle", L("风速廓线 · 风速对高度","Wind speed profile · speed vs height"));
   const _wpAppend = L("<br><br><b>风速廓线：</b>","<br><br><b>Wind profile:</b> ")+L(
     "风速随高度增大。纵轴为高度（与探空图一致）；曲线显示每层的风速。虚线标出强风（≥93 km/h）与真正的<b>急流</b>强度（≥120 km/h）。只有风既快（≥120）又高（≥8 km）时才显示红色急流标记；较慢或较低的峰值标为“风速极值”。高空急流通常意味着强切变与有组织的风暴。",
@@ -1301,6 +1324,21 @@ function farmerSummaryParts(){
     if(firstHi===null&&lv>=2)firstHi=i;
   }
   const at=(i)=>fmtHour(h.time[i]);
+  // day-aware time: name the clock hour, and only add a relative-day tag when the target
+  // falls on a later calendar day than the anchor hour — so "05:00" is never ambiguously
+  // read as tonight vs tomorrow morning. Farmers judge day/night themselves from the hour.
+  const dayKey=(i)=>String(h.time[i]).slice(0,10);
+  const atDay=(i)=>{
+    if(i==null) return "";
+    const d0=new Date(dayKey(HR_START)+"T00:00:00").getTime();
+    const di=new Date(dayKey(i)+"T00:00:00").getTime();
+    const dd=Math.round((di-d0)/86400000);
+    const t=at(i);
+    if(dd<=0) return t;
+    if(dd===1) return L(`明天 ${t}`,`${t} tomorrow`);
+    if(dd===2) return L(`后天 ${t}`,`${t} in 2 days`);
+    return t;
+  };
   // first hour today with a meaningful chance of rain (ensemble ≥1mm ≥40%, else risk strip ≥2)
   let firstRainI=null;
   for(let i=HR_START;i<=HR_END;i++){
@@ -1313,16 +1351,16 @@ function farmerSummaryParts(){
   const cls=classifyParcels(A0);
   // sentence 1: what kind of day + when
   const what={
-    hidden:  L(`地面看似平静，但上层已蓄能${firstHi!=null?` — 约 ${at(firstHi)} 后风暴风险明显升高`:""}。别被早上的好天骗了。`,
-               `The surface looks calm but fuel is loaded aloft${firstHi!=null?` — storm risk rises clearly after ~${at(firstHi)}`:""}. Don't trust the quiet morning.`),
-    loaded:  L(`全天蓄能充足，${firstHi!=null?`约 ${at(firstHi)} 起`:"随时"}可能起雷暴 — 没有可靠的安全窗口。`,
-               `Loaded all day — storms possible ${firstHi!=null?`from ~${at(firstHi)}`:"anytime"}; no reliable safe window.`),
-    heating: L(`风暴要等太阳加热，${firstHi!=null?`大约 ${at(firstHi)} 前`:"上午"}是可用的作业窗口。`,
-               `Storms wait for heating — ${firstHi!=null?`before ~${at(firstHi)}`:"the morning"} is a usable work window.`),
+    hidden:  L(`地面看似平静，但上层已蓄能${firstHi!=null?` — 约 ${atDay(firstHi)} 后风暴风险明显升高`:""}。别被早上的好天骗了。`,
+               `The surface looks calm but fuel is loaded aloft${firstHi!=null?` — storm risk rises clearly after ~${atDay(firstHi)}`:""}. Don't trust the quiet morning.`),
+    loaded:  L(`全天蓄能充足，${firstHi!=null?`约 ${atDay(firstHi)} 起`:"随时"}可能起雷暴 — 没有可靠的安全窗口。`,
+               `Loaded all day — storms possible ${firstHi!=null?`from ~${atDay(firstHi)}`:"anytime"}; no reliable safe window.`),
+    heating: L(`风暴要等太阳加热，${firstHi!=null?`大约 ${atDay(firstHi)} 前`:"上午"}是可用的作业窗口。`,
+               `Storms wait for heating — ${firstHi!=null?`before ~${atDay(firstHi)}`:"the morning"} is a usable work window.`),
     stable:  L(`今天大体安静：连隐藏燃料都查过了，没有。放心安排喷药与晒果。`,
                `A genuinely quiet day — hidden fuel checked, none found. Plan spraying and drying with confidence.`),
-    mixed:   L(`处于边缘状态${firstHi!=null?`，约 ${at(firstHi)} 后需留意`:""} — 按小时盯着走，别做长承诺。`,
-               `A marginal day${firstHi!=null?` — watch from ~${at(firstHi)}`:""}; follow it hour by hour, avoid long commitments.`),
+    mixed:   L(`处于边缘状态${firstHi!=null?`，约 ${atDay(firstHi)} 后需留意`:""} — 按小时盯着走，别做长承诺。`,
+               `A marginal day${firstHi!=null?` — watch from ~${atDay(firstHi)}`:""}; follow it hour by hour, avoid long commitments.`),
   }[cls];
   // sentence 2: ensemble framing (only when real)
   let ensLine="";
@@ -1336,20 +1374,21 @@ function farmerSummaryParts(){
     // irrigation cue: if a useful soaking looks likely, suggest holding back watering
     if(maxT5>=40) ensLine+=L(" 雨水够用，可暂停灌溉。"," Rain should be enough — you can pause irrigation.");
   }
-  // spray window: name the dry window and when rain most likely starts — farmers judge for themselves
-  // spray guidance keys off WORKING hours (06–19 local): night rain is information, not urgency
+  // spray window: simply state WHEN rain is expected and how much lead time there is.
+  // No "day/night" labels — the farmer reads the clock themselves; we just name the hour
+  // (with a tomorrow/day-after tag when it crosses midnight) and how much runway is left.
   const hrOf=(i)=>+String(h.time[i]).slice(11,13);
-  const rainAtNight = firstRainI!=null && (hrOf(firstRainI)>=19 || hrOf(firstRainI)<6);
+  const leadHrs = firstRainI!=null ? (firstRainI-HR_START) : null;   // hours from "now" until rain
   let windowLine="";
-  if(firstRainI!=null && rainAtNight){
-    windowLine=L(`🌂 白天干爽，雨约 ${at(firstRainI)}（夜间）才到 — 日间喷药、晾晒不受影响。`,
-                 `🌂 Daytime stays dry — rain holds off until ~${at(firstRainI)} (overnight); daytime spraying and drying unaffected.`);
-  } else if(firstRainI!=null && firstRainI>HR_START+2){
-    windowLine=L(`🌂 大约 ${at(firstRainI)} 前干爽 — 要喷药/叶面肥就趁早、赶在雨前喷完晾干。`,
-                 `🌂 Dry until about ${at(firstRainI)} — if spraying, do it early and let it dry before the rain.`);
+  if(firstRainI!=null && leadHrs>=8){
+    windowLine=L(`🌂 长时间干爽 — 雨预计约 ${atDay(firstRainI)} 才到；喷药、晾晒都有充裕窗口。`,
+                 `🌂 Long dry spell — rain not expected until ~${atDay(firstRainI)}; plenty of window for spraying and drying.`);
+  } else if(firstRainI!=null && leadHrs>=3){
+    windowLine=L(`🌂 约 ${atDay(firstRainI)} 前干爽 — 要喷药/叶面肥就趁早，赶在雨前喷完晾干。`,
+                 `🌂 Dry until about ${atDay(firstRainI)} — if spraying, do it early and let it dry before the rain.`);
   } else if(firstRainI!=null){
-    windowLine=L(`🌂 雨可能很快（约 ${at(firstRainI)}）就到 — 喷药窗口很窄，务必看准短暂的干爽时段。`,
-                 `🌂 Rain may arrive soon (around ${at(firstRainI)}) — the spray window is narrow; watch for a brief dry break.`);
+    windowLine=L(`🌂 雨可能很快（约 ${atDay(firstRainI)}）就到 — 喷药窗口很窄，务必看准短暂的干爽时段。`,
+                 `🌂 Rain may arrive soon (around ${atDay(firstRainI)}) — the spray window is narrow; watch for a brief dry break.`);
   }
   // three work lights
   // --- work lights mapped to how durian farmers actually decide ---
@@ -1365,10 +1404,9 @@ function farmerSummaryParts(){
   }
   const light=(bad,warn)=>bad?"bad":warn?"warn":"ok";
   const mark=(c)=>c==="ok"?"✓":c==="warn"?"⚠":"✗";
-  // DRY-window jobs: green when the morning stays dry, red when it won't
   // spray: we give the window and trust the farmer's judgment — so this is informational, not a veto.
-  // green when there's a usable dry window (rain not until after the early hours); amber if rain comes early.
-  const sprayWindowOK = (firstRainI==null) || rainAtNight || (firstRainI>HR_START+2);
+  // green when there's a usable dry window (rain at least ~3h out); amber if rain comes soon.
+  const sprayWindowOK = (firstRainI==null) || (leadHrs>=3);
   const spray = sprayWindowOK ? "ok" : "warn";       // chemical / foliar spray
   const sundry=light(dayT5>=50||worst>=3, dayT1>=40||worst>=2); // laundry / produce sunbathing
   // RAIN-positive job: seeding & fertilizer are BEST just before decent rain waters them in.
@@ -1377,7 +1415,7 @@ function farmerSummaryParts(){
                  : (dayT5>=30||dayT1>=50)?"ok"                   // good soaking coming — ideal to apply
                  : "off";                                        // too dry to bother / no benefit
   // MOVEMENT job: harvest & transport — caution on wet, stormy, or downburst days
-  const markSeed=(c)=>c==="ok"?"✓":c==="warn"?"⚠":"·";
+  const markSeed=(c)=>c==="ok"?"✓":c==="warn"?"⚠":"○";
   const lights=[
     [spray, mark(spray),  L("喷药/叶面肥","Spray / foliar")],
     [sundry,mark(sundry), L("晾晒","Sun-drying")],
@@ -1429,6 +1467,30 @@ function renderParcelMatrix(A){
   wireCollapsibles();
 }
 let PARCEL_SEL=(function(){ try{const v=localStorage.getItem("skewt.parcel.v1"); return ["sb","ml","mu"].includes(v)?v:"sb";}catch(e){return "sb";} })();
+/* lightweight: wind vectors + heights only, no parcel lifts. Used for hodograph
+   ghost trails so scrubbing doesn't run the full analyze() (incl. EIL) per ghost. */
+function profWindOnly(P){
+  const prof=P.prof;
+  const HTZ=[]; {
+    const elev=(P.elev!=null&&isFinite(P.elev))?P.elev:null;
+    const ghLevels=prof.filter(l=>l.gh!=null&&isFinite(l.gh));
+    if(elev!=null && ghLevels.length>=Math.max(3,(prof.length-1)*0.8)){
+      HTZ.push({p:prof[0].p,z:0});
+      for(const l of ghLevels){ HTZ.push({p:l.p,z:Math.max(0,l.gh-elev)}); }
+      HTZ.sort((a,b)=>b.p-a.p);
+    } else {
+      const RdC=287.05, G=9.80665;
+      const tvK=(l)=>{ const r=(l.Td!=null?mixingRatioFromDew(l.Td,l.p):0)/1000; return (l.T+273.15)*(1+0.61*r); };
+      let z=0; HTZ.push({p:prof[0].p,z:0});
+      for(let k=0;k<prof.length-1;k++){ const a=prof[k],b=prof[k+1]; z+=RdC*(tvK(a)+tvK(b))/2/G*Math.log(a.p/b.p); HTZ.push({p:b.p,z}); }
+    }
+  }
+  const hAt=(p)=>{ if(p>=HTZ[0].p)return 0;
+    for(let k=0;k<HTZ.length-1;k++){ if(p<=HTZ[k].p&&p>=HTZ[k+1].p){ const f=Math.log(HTZ[k].p/p)/Math.log(HTZ[k].p/HTZ[k+1].p); return Math.round(HTZ[k].z+f*(HTZ[k+1].z-HTZ[k].z)); } }
+    return Math.round(HTZ[HTZ.length-1].z); };
+  const toUV=(spd,dir)=>{const r=(dir||0)*Math.PI/180;return {u:-spd*Math.sin(r), v:-spd*Math.cos(r)};};
+  return prof.filter(l=>l.ws!=null).map(l=>({p:l.p,ws:l.ws,wd:l.wd,uv:toUV(l.ws,l.wd),ht:hAt(l.p)}));
+}
 function analyze(P){
   const prof=P.prof, sfc=prof[0];
   // --- the three standard parcels ---
@@ -1554,20 +1616,105 @@ function analyze(P){
   lclHt=heightAtP(lclP);
   const elHt=elP?heightAtP(elP):null, lfcHt=lfcP?heightAtP(lfcP):null;
 
-  // ---- wind shear & SRH (needs u,v per level) ----
+  // ================= storm kinematics (west-coast squall / MCS organization) =================
+  // All winds here are km/h (Open-Meteo). Convert to m/s (÷3.6) for Bunkers & shear outputs;
+  // SRH is reported in m²/s². Everything is storm-relative to the Bunkers right-mover.
+  const MS=1/3.6;                                    // km/h → m/s
   const toUV=(spd,dir)=>{const r=(dir||0)*Math.PI/180;return {u:-spd*Math.sin(r), v:-spd*Math.cos(r)};};
-  const windAt=targetP=>{ // nearest level with wind
-    let best=null,bd=1e9; for(const l of prof){ if(l.ws==null)continue; const d=Math.abs(l.p-targetP); if(d<bd){bd=d;best=l;} } return best; };
-  const wSfc=prof.find(l=>l.ws!=null), w6=windAt(500); // ~500hPa ≈ 5-6km proxy
+  const wind=P.__profWind || prof.filter(l=>l.ws!=null).map(l=>({p:l.p,ws:l.ws,wd:l.wd,uv:toUV(l.ws,l.wd),ht:heightAtP(l.p)}));
+  // interpolate the u,v wind (m/s) at a target height AGL (metres), linear in height
+  const windAtHt=(zTgt)=>{
+    if(wind.length<2) return null;
+    if(zTgt<=wind[0].ht) return {u:wind[0].uv.u*MS, v:wind[0].uv.v*MS};
+    for(let k=0;k<wind.length-1;k++){
+      const a=wind[k], b=wind[k+1];
+      if(zTgt>=a.ht && zTgt<=b.ht){
+        const f=(b.ht===a.ht)?0:(zTgt-a.ht)/(b.ht-a.ht);
+        return {u:(a.uv.u+(b.uv.u-a.uv.u)*f)*MS, v:(a.uv.v+(b.uv.v-a.uv.v)*f)*MS};
+      }
+    }
+    const t=wind[wind.length-1]; return {u:t.uv.u*MS, v:t.uv.v*MS};
+  };
+  // pressure-weighted-ish mean wind over a height layer (m/s), sampled every 250 m
+  const meanWind=(z0,z1)=>{
+    let su=0,sv=0,n=0;
+    for(let z=z0; z<=z1; z+=250){ const w=windAtHt(z); if(w){su+=w.u;sv+=w.v;n++;} }
+    return n?{u:su/n,v:sv/n}:null;
+  };
+  // ---- effective inflow layer (Thompson et al. 2007): contiguous levels whose parcel
+  //      has CAPE ≥ 100 J/kg AND CIN ≥ −250 J/kg. Uses the same validated liftFrom routine. ----
+  let eilBotP=null, eilTopP=null, eilBotHt=null, eilTopHt=null;
+  {
+    let started=false;
+    for(const l of prof){
+      if(l.Td==null){ if(started)break; else continue; }
+      const pc=liftFrom(l.T,l.Td,l.p,prof);
+      const ok=(pc.cape>=100 && pc.cin>=-250);
+      if(ok && !started){ started=true; eilBotP=l.p; eilBotHt=heightAtP(l.p); }
+      else if(!ok && started){ break; }
+      if(started){ eilTopP=l.p; eilTopHt=heightAtP(l.p); }
+    }
+    if(eilBotP!=null && eilTopP!=null && eilTopP===eilBotP){ // single qualifying level = no usable depth
+      eilBotP=eilTopP=eilBotHt=eilTopHt=null;
+    }
+  }
+  // ---- Bunkers storm motion (2000/2014): 0–6 km mean wind ± 7.5 m/s ⟂ to the 0–6 km shear ----
+  let bunkR=null, bunkL=null, mean06=null;
+  {
+    const mw=meanWind(0,6000);
+    const w0=windAtHt(0), w6=windAtHt(6000);
+    if(mw && w0 && w6){
+      mean06=mw;
+      const shu=w6.u-w0.u, shv=w6.v-w0.v, mag=Math.hypot(shu,shv);
+      if(mag>0){
+        const D=7.5;                                 // m/s deviation (Bunkers)
+        // right mover: mean + D * (shear × k̂)/|shear|  → (shv,−shu); left mover: opposite
+        bunkR={u:mw.u+D*( shv/mag), v:mw.v+D*(-shu/mag)};
+        bunkL={u:mw.u+D*(-shv/mag), v:mw.v+D*( shu/mag)};
+      }
+    }
+  }
+  // ---- storm-relative helicity to the Bunkers right-mover (m²/s²), 0–1 km and 0–3 km ----
+  const srhTo=(z0,z1,storm)=>{
+    if(!storm) return null;
+    let sum=0, prev=windAtHt(z0);
+    for(let z=z0+100; z<=z1; z+=100){
+      const cur=windAtHt(z); if(!prev||!cur){prev=cur;continue;}
+      const uk=prev.u-storm.u, vk=prev.v-storm.v, uk1=cur.u-storm.u, vk1=cur.v-storm.v;
+      sum += (uk1*vk - uk*vk1);                       // discrete SRH: veering ⇒ positive (NH)
+      prev=cur;
+    }
+    return sum;
+  };
+  const srh01=srhTo(0,1000,bunkR), srh03=srhTo(0,3000,bunkR);
+  // ---- effective bulk wind difference (EBWD): EIL base → ½ EL height (m/s) ----
+  // In deep tropical CAPE the EL often sits above the data top (elHt null). Rather than
+  // give up, fall back to ½ of the storm-top proxy (data top), capped at 6 km AGL, so the
+  // number stays useful exactly when organization matters most.
+  let ebwd=null;
+  if(eilBotHt!=null){
+    const topRef = (elHt!=null) ? elHt : Math.min(heightAtP(prof[prof.length-1].p), 12000);
+    const zTop = eilBotHt + Math.max(0, (topRef-eilBotHt))*0.5;
+    if(zTop>eilBotHt){
+      const wb=windAtHt(eilBotHt), wt=windAtHt(zTop);
+      if(wb&&wt) ebwd=Math.hypot(wt.u-wb.u, wt.v-wb.v);
+    }
+  }
+  // 0–6 km bulk shear (m/s) — always available when winds span the layer, for context
+  let bwd06=null;
+  { const w0=windAtHt(0), w6=windAtHt(6000); if(w0&&w6) bwd06=Math.hypot(w6.u-w0.u,w6.v-w0.v); }
+
+  // ---- legacy shear (kept for existing storm scoring; km/h surface→~500 hPa) ----
+  const windAt=targetP=>{ let best=null,bd=1e9; for(const l of prof){ if(l.ws==null)continue; const d=Math.abs(l.p-targetP); if(d<bd){bd=d;best=l;} } return best; };
+  const wSfc=prof.find(l=>l.ws!=null), w6p=windAt(500);
   let shear=null, shearDir=null;
-  // only compute when a real mid-level wind exists (within 150 hPa of 500) and isn't the surface itself —
-  // otherwise shear is UNKNOWN (null), never a fabricated 0
-  if(wSfc&&w6&&w6!==wSfc&&Math.abs(w6.p-500)<=150){ const a=toUV(wSfc.ws,wSfc.wd),b=toUV(w6.ws,w6.wd);
+  if(wSfc&&w6p&&w6p!==wSfc&&Math.abs(w6p.p-500)<=150){ const a=toUV(wSfc.ws,wSfc.wd),b=toUV(w6p.ws,w6p.wd);
     const du=b.u-a.u,dv=b.v-a.v; shear=Math.hypot(du,dv); shearDir=(Math.atan2(-du,-dv)*180/Math.PI+360)%360; }
-  // storm-relative helicity 0-3km (proxy using levels up to ~700hPa), Bunkers-ish storm motion omitted → use 0
-  let srh=0; const layers=prof.filter(l=>l.ws!=null&&l.p>=650);
-  for(let k=0;k<layers.length-1;k++){ const a=toUV(layers[k].ws,layers[k].wd),b=toUV(layers[k+1].ws,layers[k+1].wd);
-    srh += (a.u*b.v - b.u*a.v); }
+  // storm-relative helicity legacy scalar (unnormalized, ground-relative) — kept only if needed downstream
+  let srh=srh03!=null?srh03:0;
+  // convert Bunkers vectors to speed/dir for display (km/h, meteorological)
+  const vecToSpdDir=(w)=>w?{spd:Math.hypot(w.u,w.v)/MS, dir:(Math.atan2(-w.u,-w.v)*180/Math.PI+360)%360}:null;
+  const bunkRmo=vecToSpdDir(bunkR), bunkLmo=vecToSpdDir(bunkL);
 
   // convective temperature: surface T needed for parcel to reach LCL along mixing ratio → approx = Tlcl brought dry-adiabatically to sfc
   const convT = K2C(dryLift(Tlcl, lclP, sfc.p));
@@ -1594,6 +1741,10 @@ function analyze(P){
     KI,TT,SI,frzP,frzHt:frzP?heightAtP(frzP):null,wbzP,wbzHt:wbzP?heightAtP(wbzP):null,
     elAbove,topHt:heightAtP(prof[prof.length-1].p),htOfP:heightAtP,
     lr700_500,lr850_500,elHt,lfcHt,shear,shearDir,srh,convT,ptype,dd,
+    // storm kinematics (squall/MCS organization)
+    eilBotP,eilTopP,eilBotHt,eilTopHt,
+    srh01,srh03,ebwd,bwd06,
+    bunkR:bunkRmo,bunkL:bunkLmo,
     profWind:prof.filter(l=>l.ws!=null).map(l=>({p:l.p,ws:l.ws,wd:l.wd,uv:toUV(l.ws,l.wd),ht:heightAtP(l.p)}))};
 }
 
@@ -2082,11 +2233,13 @@ function drawHodograph(A){
     return;
   }
   // gather previous-hours' wind profiles as "ghosts" (up to 3 back) so we can see the wind trend
+  // ghosts only need the wind vectors, not the full thermodynamic analysis — compute
+  // profWind directly so scrubbing doesn't re-run parcel lifts (incl. EIL) three extra times.
   const ghosts=[];
   if(typeof DATA!=="undefined" && DATA && typeof CUR_I==="number"){
     for(let k=1;k<=3;k++){
       const gi=CUR_I-k; if(gi<0)break;
-      try{ const gp=analyze(buildProfile(DATA,gi)).profWind||[]; if(gp.length) ghosts.push(gp); }catch(e){}
+      try{ const gp=profWindOnly(buildProfile(DATA,gi)); if(gp.length) ghosts.push(gp); }catch(e){}
     }
   }
   // scale must fit the current curve AND every ghost so nothing clips
@@ -2128,6 +2281,19 @@ function drawHodograph(A){
     if(i===0) g.appendChild(txt(x-6,y+3,L("地面","sfc"),'gl-lbl',"end","var(--dew)"));
     if(i===SIX_I) g.appendChild(txt(x+6,y,"~6km",'gl-lbl',"start","var(--warn)"));
   });
+  // ---- Bunkers storm-motion markers (same km/h scale, same "from"→u,v convention) ----
+  const toUVh=(spd,dir)=>{const r=(dir||0)*Math.PI/180;return {u:-spd*Math.sin(r), v:-spd*Math.cos(r)};};
+  const plotMotion=(mo,label,col,filled)=>{
+    if(!mo) return;
+    const uv=toUVh(mo.spd,mo.dir);
+    const x=cx+uv.u*R, y=cy-uv.v*R;
+    if(Math.hypot(x-cx,y-cy)>140) return;                 // off-scale: skip rather than clip
+    g.appendChild(el("circle",{cx:x,cy:y,r:5,fill:filled?col:"none",stroke:col,"stroke-width":2}));
+    g.appendChild(txt(x+7,y+3,label,'gl-lbl',"start",col));
+  };
+  // right-mover is the meteorologically relevant one for organized storms → filled + accent
+  plotMotion(A.bunkR,L("风暴","storm"),"var(--accent)",true);
+  plotMotion(A.bunkL,"",  "var(--faint)",false);
 }
 
 /* vertical wind-speed profile: speed (x) vs pressure (y, log like the sounding) */
@@ -2247,6 +2413,10 @@ function kiWord(v){ if(v==null)return""; if(v<20)return L("雷暴可能性低","
 function ttWord(v){ if(v==null)return""; if(v<44)return L("弱","weak"); if(v<50)return L("可能雷暴","thunderstorms likely"); if(v<56)return L("强雷暴","strong storms"); return L("有强对流潜势","severe potential"); }
 function lapseWord(v){ if(v==null)return""; if(v<6)return L("稳定层","stable layer"); if(v<7)return L("边缘","marginal"); if(v<8)return L("条件性不稳定","conditionally unstable"); return L("陡峭 — 不稳定","steep — unstable"); }
 function shearWord(kmh){ if(kmh==null)return""; if(kmh<20)return L("弱 — 脉冲风暴","weak — pulse storms"); if(kmh<37)return L("中等 — 有组织","moderate — organized"); if(kmh<56)return L("强 — 可出现超级单体","strong — supercell-capable"); return L("极端切变","extreme shear"); }
+// effective bulk wind difference in m/s → farm-facing organization wording (squall/MCS context)
+function ebwdWord(ms){ if(ms==null)return L("无有效层 — 缺可抬升的燃料","no effective layer — nothing to lift"); const k=ms; if(k<10)return L("弱 — 短命单体","weak — short-lived cells"); if(k<20)return L("中等 — 多单体成簇/短飑线","moderate — multicell clusters / short lines"); if(k<27)return L("强 — 有组织飑线，可持续横扫","strong — organized squall line, sweeps across"); return L("极强 — 强飑线/弓形回波风险","very strong — intense squall / bow-echo risk"); }
+// SRH (m²/s²) → rotation/longevity wording
+function srhWord(v){ if(v==null)return""; const a=Math.abs(v); if(a<100)return L("低 — 无明显旋转","low — little rotation"); if(a<250)return L("中等 — 风暴可获得旋转/持久","moderate — storms can rotate/persist"); if(a<400)return L("大 — 强持久风暴环境","large — strong, long-lived storm environment"); return L("极大 — 高度有组织","very large — highly organized"); }
 function ptypeWord(A,P){ if(P.Tsfc!=null&&P.Tsfc<=0)return L(A.ptype==="Snow"?"雪":"冻雨/雨夹雪",A.ptype); return L("雨（暖气柱）","Rain (warm column)"); }
 function render(P,A,fc){
   const [lbl,txt2,col]=capeVerdict(A.cape);
@@ -2299,10 +2469,15 @@ function render(P,A,fc){
       [L("湿球零度","Wet-bulb zero"),A.wbzHt!=null?fmt(A.wbzHt,0):"—","m",L("湿球0°C高度 — 冰雹尺寸的指标。","Wet-bulb 0 °C height — a hail-size indicator.")],
       [L("对流温度","Convective temp"),fmt(A.convT,1),"°C",L("仅靠日晒触发对流所需的地面温度。","Surface temp needed to spark convection without a push.")],
     ]],
-    [L("风与切变","Wind & shear"),[
+    [L("风 · 切变 · 风暴组织","Wind · shear · organization"),[
       [L("地面风","Surface wind"),P.windSpd!=null?fmt(P.windSpd,0):"—","km/h",L(`来自${compass(P.windDir)}。${windWord(P.windSpd)}。`,`From ${compass(P.windDir)}. ${windWord(P.windSpd)}.`)],
       [L("阵风","Wind gusts"),P.gust!=null?fmt(P.gust,0):"—","km/h",L("本小时的短时最大阵风。","Peak short gusts this hour.")],
       [L("0–6 km 切变","0–6 km shear"),A.shear!=null?fmt(A.shear,0):"—","km/h",L(`地面到风暴层的风变化。${shearWord(A.shear)}。`,`Wind change ground→storm level. ${shearWord(A.shear)}.`)],
+      [L("有效切变 EBWD","Effective shear"),A.ebwd!=null?fmt(A.ebwd*3.6,0):"—","km/h",L(`跨越真正燃料层的切变 — 判断飑线能否组织化并横扫的最佳单一指标。${ebwdWord(A.ebwd)}。`,`Shear across the layer that actually has fuel — the single best gauge of whether a squall line organizes and sweeps through. ${ebwdWord(A.ebwd)}.`)],
+      [L("有效入流层","Effective inflow"),(A.eilBotHt!=null&&A.eilTopHt!=null)?`${fmt(A.eilBotHt,0)}–${fmt(A.eilTopHt,0)}`:"—","m",L("风暴实际吸入空气的高度层（有浮力、盖子不太强）。没有它，切变就无处作用。","The height band a storm actually inhales from (buoyant, not too capped). Without it, shear has nothing to work on.")],
+      [L("螺旋度 SRH 0–1","Helicity 0–1 km"),A.srh01!=null?fmt(A.srh01,0):"—","m²/s²",L(`低层风的旋转量 — 风暴是否会获得旋转与持久性。${srhWord(A.srh01)}。`,`Low-level spin available to a storm — whether it gains rotation and longevity. ${srhWord(A.srh01)}.`)],
+      [L("螺旋度 SRH 0–3","Helicity 0–3 km"),A.srh03!=null?fmt(A.srh03,0):"—","m²/s²",L(`0–3公里累积旋转量。正值＝顺时针转向（北半球有利有组织风暴）。${srhWord(A.srh03)}。`,`Total 0–3 km spin. Positive = clockwise turning (favours organized storms in the N. hemisphere). ${srhWord(A.srh03)}.`)],
+      [L("风暴移动 (右)","Storm motion (R)"),A.bunkR!=null?`${fmt(A.bunkR.spd,0)}`:"—","km/h",A.bunkR!=null?L(`估计风暴向 ${compass((A.bunkR.dir+180)%360)} 移动、约 ${Math.round(A.bunkR.spd)} km/h（Bunkers 右移体）— 用于判断风暴多快扫过果园。`,`Estimated storm travels toward ${compass((A.bunkR.dir+180)%360)} at ~${Math.round(A.bunkR.spd)} km/h (Bunkers right-mover) — how fast it sweeps across the orchard.`):L("需完整高空风。","Needs full upper-air wind.")],
       [L("总云量","Total cloud"),fmt(P.cloud,0),"%",L(`头顶${cloudWord(P.cloud)}。`,`${cloudWord(P.cloud)} overhead.`)],
       [L("云 低/中/高","Cloud L/M/H"),`${fmt(P.cloudLow)}/${fmt(P.cloudMid)}/${fmt(P.cloudHigh)}`,"%",L("低/中/高三层云量。","Low / mid / high cloud split.")],
       [L("能见度","Visibility"),P.vis!=null?fmt(P.vis/1000,1):"—","km",fogLbl+L("。",".")],
@@ -2411,9 +2586,9 @@ function renderList(){
 
   const card=f=>{
     const fm=FARM_MODELS[String(f.id)]||f.model||"";
-    const opts=`<option value=""${fm===""?" selected":""}>${L("自动","Auto")}</option>`+
-      MODELS.map(m=>`<option value="${m.api}"${m.api===fm?" selected":""}>${m.short}</option>`).join("");
-    return `<div class="frow${f.id===ACTIVE_ID?" active":""}" data-id="${f.id}"><div class="fn">${esc(f.name)}<small>${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}</small></div><select class="rowmodel" data-id="${f.id}" title="${L('该果园的默认天气模式','Default weather model for this farm')}">${opts}</select></div>`;
+    const cm=MODELS.find(x=>x.api===fm);
+    const chipTxt=cm?cm.short:L("自动","Auto");
+    return `<div class="frow${f.id===ACTIVE_ID?" active":""}" data-id="${f.id}"><div class="fn">${esc(f.name)}<small>${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}</small></div><button type="button" class="rowmodel${fm?" set":""}" data-id="${f.id}" title="${L('该果园的默认天气模式','Default weather model for this farm')}">${chipTxt}<span class="rm-car">▾</span></button></div>`;
   };
 
   list.innerHTML = order.length ? order.map(r=>{
@@ -2432,21 +2607,42 @@ function renderList(){
   list.querySelectorAll(".frow").forEach(row=>row.onclick=()=>{
     const f=farmById(row.dataset.id); if(f){ACTIVE_ID=f.id;applyFarmModel(String(f.id),f.model);renderList();toggleList(false);load(f.lat,f.lng,f.name);}
   });
-  list.querySelectorAll(".rowmodel").forEach(sel=>{
-    sel.onclick=(e)=>e.stopPropagation();                       // tapping the picker must not open the farm
-    sel.onchange=(e)=>{
-      e.stopPropagation();
-      const id=sel.dataset.id, v=sel.value;
-      if(v) FARM_MODELS[id]=v; else delete FARM_MODELS[id];
-      saveFarmModels(); updateModelNote();
-      // if this is the farm currently on screen, switch and re-fetch immediately
-      if(String(ACTIVE_ID)===id && v && v!==MODEL && MODELS.some(x=>x.api===v)){
-        MODEL=v; try{localStorage.setItem("skewt.model.v1",MODEL);}catch(err){}
-        populateModelSel();
-        if(LATLON) load(LATLON[0],LATLON[1],LASTLABEL);
-      }
-    };
+  list.querySelectorAll(".rowmodel").forEach(btn=>{
+    btn.onclick=(e)=>{ e.stopPropagation();                     // tapping the chip must not open the farm
+      openRowModelPicker(btn.dataset.id); };
   });
+}
+/* apply a per-farm model choice (v="" clears back to Auto). Shared by the popup. */
+function setFarmModel(id,v){
+  if(v) FARM_MODELS[id]=v; else delete FARM_MODELS[id];
+  saveFarmModels(); updateModelNote();
+  // if this is the farm currently on screen, switch and re-fetch immediately
+  if(String(ACTIVE_ID)===id && v && v!==MODEL && MODELS.some(x=>x.api===v)){
+    MODEL=v; try{localStorage.setItem("skewt.model.v1",MODEL);}catch(err){}
+    populateModelSel();
+    if(LATLON) load(LATLON[0],LATLON[1],LASTLABEL);
+  }
+  renderList();
+}
+/* centered popup with big model tiles for a single farm row (fat-finger friendly) */
+function openRowModelPicker(id){
+  const f=farmById(id); if(!f)return;
+  const cur=FARM_MODELS[id]||f.model||"";
+  const ov=document.getElementById("rowModelOv"),
+        ttl=document.getElementById("rowModelTitle"),
+        box=document.getElementById("rowModelTiles");
+  ttl.textContent=f.name;
+  const sub=document.getElementById("rowModelSub");
+  if(sub) sub.textContent=L("为该果园选择默认天气模式","Default weather model for this farm");
+  const tiles=[{api:"",short:L("自动","Auto"),sub:L("跟随当前模式","Follow current")}]
+    .concat(MODELS.map(m=>({api:m.api,short:m.short,sub:L(m.zh,m.en)})));
+  box.innerHTML=tiles.map(x=>
+    `<button type="button" class="mtile${x.api===cur?" on":""}" data-api="${x.api}"><b>${x.short}</b><span class="ms">${x.sub}</span></button>`).join("");
+  box.querySelectorAll(".mtile").forEach(t=>{ t.onclick=()=>{
+    setFarmModel(id,t.dataset.api);
+    ov.classList.add("hidden");
+  }; });
+  ov.classList.remove("hidden");
 }
 
 /* ---------- recycle bin (inside sheet) ---------- */
@@ -2677,6 +2873,8 @@ document.getElementById("restoreSeeds").onclick=()=>{
   if(confirm("Bring back all purged built-in farms?")){savePurged([]);renderList();renderBin();}
 };
 document.getElementById("overlay").onclick=(e)=>{if(e.target.id==="overlay")closeSheet();};
+document.getElementById("rowModelClose").onclick=()=>document.getElementById("rowModelOv").classList.add("hidden");
+document.getElementById("rowModelOv").onclick=(e)=>{if(e.target.id==="rowModelOv")document.getElementById("rowModelOv").classList.add("hidden");};
 document.getElementById("locFilter").oninput=(e)=>{FILTER=e.target.value;renderList();};
 /* master list collapse/expand */
 function toggleList(force){
