@@ -160,8 +160,7 @@ body.lang-zh .crosstip-inline{min-height:146px}
 .crosstip .ttrow{display:flex;align-items:center;gap:5px;margin-top:3px;color:var(--dim)}
 .crosstip .ttrow i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-left:2px}
 .crosstip .ttrow i:first-child{margin-left:0}
-.chart-hint{text-align:center;font-size:12px;color:var(--faint);margin-top:2px}
-@media(hover:hover){.chart-hint::before{content:"🖱 "}}
+.chart-hint{text-align:left;font-size:12px;color:var(--faint);line-height:1.5;margin-top:2px;padding:0 14px 4px}
 .snap-btn{right:64px !important}
 .expand-btn{position:absolute;top:10px;right:14px;width:34px;height:34px;padding:0;font-size:16px;border-radius:9px;background:rgba(18,24,40,.9);color:var(--dim);z-index:6}
 /* ---------- desktop layout (wide screens) ---------- */
@@ -241,6 +240,8 @@ svg{width:100%;height:auto;display:block;touch-action:manipulation}
 /* pin the sounding to its viewBox aspect ratio and clip any per-hour content that strays
    outside the box (stray labels/barbs), so the chart height never shifts while scrubbing. */
 #thwrap svg{aspect-ratio:360/250;height:auto}
+#hodo{width:100%;aspect-ratio:1/1;height:auto}
+#windprof{width:100%;aspect-ratio:300/340;height:auto}
 #chart{aspect-ratio:540/560;height:auto;overflow:hidden}
 #chartBig{aspect-ratio:540/560;height:auto}
 .chartwrap{contain:layout}
@@ -600,7 +601,7 @@ const MODELS=[
 /* ================= radiosonde overlay (observed balloon vs forecast) =================
    SONDE_WORKER: paste your deployed Cloudflare Worker URL here (see sonde-worker.js).
    Leave empty to disable — the button will show a setup hint instead of failing silently. */
-const APP_BUILD="v78";   // bump together with sw.js CACHE_VERSION on every deploy
+const APP_BUILD="v80";   // bump together with sw.js CACHE_VERSION on every deploy
 const SONDE_WORKER="https://sonde-worker.standphoto.workers.dev";
 const SONDE_STATIONS=[
   {id:"48601",name:"Penang 槟城",lat:5.30,lon:100.27},
