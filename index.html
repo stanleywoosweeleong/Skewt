@@ -475,6 +475,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 8px
   </div>
 </div>
 
+<div class="verdict hidden" id="verdict"></div>
+
 <div class="fsum hidden" id="fsum"></div>
 
 <div id="crossTip" class="crosstip crosstip-inline hidden"></div>
@@ -598,7 +600,7 @@ const MODELS=[
 /* ================= radiosonde overlay (observed balloon vs forecast) =================
    SONDE_WORKER: paste your deployed Cloudflare Worker URL here (see sonde-worker.js).
    Leave empty to disable — the button will show a setup hint instead of failing silently. */
-const APP_BUILD="v77";   // bump together with sw.js CACHE_VERSION on every deploy
+const APP_BUILD="v78";   // bump together with sw.js CACHE_VERSION on every deploy
 const SONDE_WORKER="https://sonde-worker.standphoto.workers.dev";
 const SONDE_STATIONS=[
   {id:"48601",name:"Penang 槟城",lat:5.30,lon:100.27},
@@ -2426,7 +2428,8 @@ function render(P,A,fc){
   const windLine = P.windSpd!=null
     ? `${windWord(P.windSpd)} · ${Math.round(P.windSpd)} km/h ${L("来自","from")} ${compass(P.windDir)}${P.gust!=null?L(`（阵风 ${Math.round(P.gust)}）`,` (gusts ${Math.round(P.gust)})`):""}`
     : "";
-  document.getElementById("verdict").innerHTML=
+  const _verdictEl=document.getElementById("verdict");
+  if(_verdictEl) _verdictEl.innerHTML=
     `<div class="h">${L("预报","Forecast")} · ${fc}</div>
      <div class="big">${rainWord} · ${L(`本小时 ${rain.toFixed(1)} mm`,`${rain.toFixed(1)} mm this hour`)}${P.pop!=null?` · ${Math.round(P.pop)}%`:""}${(function(){
         if(typeof ENS==="undefined"||!ENS||!ENS.stats)return "";
@@ -2831,7 +2834,7 @@ async function load(lat,lon,label){
     DATA=await getSounding(lat,lon); LATLON=[lat,lon]; LASTLABEL=label||null;
     SONDE=null; SONDE_ON=false; updateSondeUI();   // sonde overlay is per-location: reset on change
     renderLocCaption();
-    ["loc","hours","hoursLabel","riskstrip","verdict","crossTip","parcelRow","chartwrap","legendWrap","fsum","cards","ingredients","pmatrix","enswrap","hodowrap","thwrap","explain","cmprow"].forEach(id=>document.getElementById(id).classList.remove("hidden"));
+    ["loc","hours","hoursLabel","riskstrip","verdict","crossTip","parcelRow","chartwrap","legendWrap","fsum","cards","ingredients","pmatrix","enswrap","hodowrap","thwrap","explain","cmprow"].forEach(id=>{const el=document.getElementById(id); if(el)el.classList.remove("hidden");});
     document.getElementById("err").classList.add("hidden");
     document.getElementById("reloadBtn").classList.remove("hidden");
     document.getElementById("shareBtn").classList.remove("hidden");
